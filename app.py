@@ -447,6 +447,7 @@ Respond ONLY in this exact JSON (no markdown, no extra text):
 {
   "simple_explanation": "friendly explanation in 1-2 sentences with emojis",
   "risk_level": "LOW" or "MEDIUM" or "HIGH",
+  "risk_score": 45,
   "triage_level": "HOME_CARE" or "CLINIC_VISIT" or "EMERGENCY",
   "triage_reason": "brief reason in one sentence",
   "home_care_tips": ["tip with medicine or remedy", "tip2", "tip3", "tip4", "tip5"],
@@ -454,6 +455,7 @@ Respond ONLY in this exact JSON (no markdown, no extra text):
   "follow_up": "one relevant follow-up question",
   "followup_options": ["option1", "option2", "option3"]
 }
+risk_score must be an integer 0-100 matching the risk_level: LOW=10-35, MEDIUM=40-65, HIGH=70-95.
 
 Rules:
 - Mention specific medicines by name and dose (e.g. Paracetamol 500mg, not just 'take medicine')
@@ -503,58 +505,36 @@ Rules:
 # ─────────────────────────────────────────
 #  RULE-BASED RESPONSE  (fallback)
 # ─────────────────────────────────────────
-def rule_based_response(matched: list, risk_score: int, is_followup: bool = False, new_symptoms: bool = True) -> dict:
+def rule_based_response(matched: list, risk_score: int) -> dict:
     if risk_score >= 70:
-        expl = "⚠️ Your symptoms look serious. Please seek medical help right away. Call 108 if needed."
-        if is_followup:
-            expl = "Noted. Your symptoms still indicate a high risk. Please seek immediate medical help."
         return {
-            "simple_explanation": expl,
+            "simple_explanation": "⚠️ Your symptoms look serious. Please seek medical help right away. Call 108 if needed.",
             "triage_level": "EMERGENCY",
             "triage_reason": "High-risk symptoms detected — immediate medical attention needed",
             "home_care_tips": EMERGENCY_TIPS,
             "warning_signs": ["Difficulty breathing", "Chest pain or pressure", "Loss of consciousness"],
             "follow_up": "Are you having chest pain or difficulty breathing right now?",
-            "followup_options": ["Yes, chest pain", "Yes, breathing difficulty", "Both", "Neither"]
+            "followup_options": ["Yes, chest pain", "Yes, breathing difficulty", "Both"]
         }
     elif risk_score >= 40:
-        expl = "⚠️ You have moderate symptoms. It is best to see a doctor soon for proper diagnosis."
-        if is_followup:
-            if new_symptoms:
-                expl = "I've noted the additional details. This looks like moderate risk. Please consult a doctor."
-            else:
-                expl = "I understand. I still recommend visiting a doctor soon to be safe."
         return {
-            "simple_explanation": expl,
+            "simple_explanation": "⚠️ You have moderate symptoms. It is best to see a doctor soon for proper diagnosis.",
             "triage_level": "CLINIC_VISIT",
             "triage_reason": "Moderate symptoms detected — professional evaluation recommended",
             "home_care_tips": pick_remedies(matched, "MEDIUM"),
             "warning_signs": ["Symptoms suddenly worsen", "High fever over 3 days", "Unable to eat or drink"],
-            "follow_up": "Are your symptoms getting worse?",
-            "followup_options": ["Yes, getting worse", "Staying the same", "Getting better"]
+            "follow_up": "How long have you had these symptoms?",
+            "followup_options": ["Started today", "2-3 days", "More than 3 days"]
         }
     else:
-        expl = "😊 Your symptoms appear mild. You can manage at home with rest and these remedies."
-        if is_followup:
-            if new_symptoms:
-                expl = "Thanks for the update. Your symptoms still appear mild. Please continue resting and follow the home care tips."
-            else:
-                expl = "Got it. Your condition seems stable and mild. Keep resting!"
-        
-        follow_up_q = "Are you experiencing any other symptoms?"
-        follow_up_opts = ["Fever", "Headache", "Body pain", "No other symptoms"]
-        if is_followup and not new_symptoms:
-            follow_up_q = "Is there anything else you need help with?"
-            follow_up_opts = ["Yes", "No, I'm good"]
-
         return {
-            "simple_explanation": expl,
+            "simple_explanation": "😊 Your symptoms appear mild. You can manage at home with rest and these remedies.",
             "triage_level": "HOME_CARE",
             "triage_reason": "Mild symptoms — home care is sufficient for now",
             "home_care_tips": pick_remedies(matched, "LOW"),
             "warning_signs": ["Fever rises above 102°F", "Symptoms suddenly worsen", "New symptoms appear"],
-            "follow_up": follow_up_q,
-            "followup_options": follow_up_opts
+            "follow_up": "Are you experiencing any other symptoms?",
+            "followup_options": ["Fever", "Headache", "Body pain", "No other symptoms"]
         }
 
 
@@ -671,10 +651,8 @@ def predict():
     bmi_category         = data.get("bmi_category", "")
     bmi_severity_adjust  = data.get("bmi_severity_adjust", 0)
 
-    is_followup = len(conversation_history) > 0
-
     # Non-health filter
-    if not is_followup and not is_health_related(user_message):
+    if not is_health_related(user_message):
         return jsonify({
             "simple_explanation": "I am MediGuide AI — I specialise in health questions 🩺 Please describe your symptoms and I will help you right away!",
             "symptom_icons": ["❓"],
@@ -761,6 +739,21 @@ def predict():
         follow_up     = ai_result.get("follow_up", "How are you feeling now?")
         followup_opts = ai_result.get("followup_options", ["Better", "Same", "Worse"])
         ai_triage     = ai_result.get("triage_level", "")
+        ai_risk_level = ai_result.get("risk_level", "").upper()
+        ai_risk_score = ai_result.get("risk_score", None)
+
+        # Sync risk_pct and risk_label from Grok's assessment
+        if ai_risk_score is not None:
+            try:
+                risk_pct = max(int(ai_risk_score), risk_pct)
+            except (ValueError, TypeError):
+                pass
+        if ai_risk_level in ("HIGH", "MEDIUM", "LOW"):
+            risk_label = ai_risk_level
+            fallback = {"HIGH": 80, "MEDIUM": 55, "LOW": 20}
+            if risk_pct < fallback[ai_risk_level]:
+                risk_pct = fallback[ai_risk_level]
+
         if ai_triage == "EMERGENCY":
             triage_level  = "EMERGENCY"
             triage_reason = ai_result.get("triage_reason", triage_reason)
@@ -769,14 +762,7 @@ def predict():
             triage_level  = "CLINIC_VISIT"
             triage_reason = ai_result.get("triage_reason", triage_reason)
     else:
-        # Determine if new symptoms were added this turn
-        new_symptoms_added = True
-        if is_followup:
-            _, prior_symptoms = extract_feature_vector(prior_user_text)
-            if set(matched_symptoms) == set(prior_symptoms):
-                new_symptoms_added = False
-
-        rb            = rule_based_response(matched_symptoms, risk_pct, is_followup=is_followup, new_symptoms=new_symptoms_added)
+        rb            = rule_based_response(matched_symptoms, risk_pct)
         explanation   = rb["simple_explanation"]
         tips          = rb["home_care_tips"]
         warnings      = rb["warning_signs"]

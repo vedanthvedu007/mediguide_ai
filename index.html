@@ -1368,7 +1368,21 @@ Rules: Include specific medicines (Paracetamol 500mg) AND Indian home remedies (
   });
   const d = await r.json();
   const raw = d.content?.[0]?.text || '';
-  try { return JSON.parse(raw.replace(/```json|```/g,'').trim()); } catch(e) { return null; }
+  try {
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    // Ensure risk_score is always a number
+    parsed.risk_score = parseInt(parsed.risk_score, 10) || 0;
+    // If risk_score is 0 or missing, derive it from risk_level
+    if (!parsed.risk_score) {
+      parsed.risk_score = parsed.risk_level === 'HIGH' ? 80 : parsed.risk_level === 'MEDIUM' ? 55 : 20;
+    }
+    // Ensure risk_level is always uppercase and valid
+    parsed.risk_level = (parsed.risk_level || '').toUpperCase();
+    if (!['LOW','MEDIUM','HIGH'].includes(parsed.risk_level)) {
+      parsed.risk_level = parsed.risk_score >= 70 ? 'HIGH' : parsed.risk_score >= 40 ? 'MEDIUM' : 'LOW';
+    }
+    return parsed;
+  } catch(e) { return null; }
 }
 
 function updateStatsAfterCheck(data) {

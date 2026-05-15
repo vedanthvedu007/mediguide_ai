@@ -1354,6 +1354,8 @@ Respond ONLY with this JSON (no markdown):
 }
 Rules: Include specific medicines (Paracetamol 500mg) AND Indian home remedies (tulsi tea, haldi milk, ginger water, ajwain). EMERGENCY only for severe chest pain+breathlessness, stroke, unconsciousness. Always mention 108 for emergencies.`;
 
+  // Build messages: prior history (excluding the just-pushed current user msg) + current msg
+  const priorHistory = conversationHistory.slice(0, -1);
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
@@ -1361,7 +1363,7 @@ Rules: Include specific medicines (Paracetamol 500mg) AND Indian home remedies (
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
       system: sysPrompt,
-      messages: conversationHistory
+      messages: [...priorHistory, {role: "user", content: text}]
     })
   });
   const d = await r.json();

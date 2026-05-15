@@ -46,12 +46,12 @@ CORS(app)  # Allow all origins — restrict in production
 #  ANTHROPIC CONFIG
 #  Set env var: ANTHROPIC_API_KEY=sk-ant-...
 # ─────────────────────────────────────────
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-USE_AI_FALLBACK = bool(ANTHROPIC_API_KEY)
+GROK_API_KEY = os.environ.get("GROK_API_KEY", "")
+USE_AI_FALLBACK = bool(GROK_API_KEY)
 if USE_AI_FALLBACK:
-    print("[MediGuide] Anthropic API key found — AI fallback enabled.")
+    print("[MediGuide] Grok API key found — AI fallback enabled.")
 else:
-    print("[MediGuide] No Anthropic API key — using rule-based responses.")
+    print("[MediGuide] No Grok API key — using rule-based responses.")
 
 
 # ─────────────────────────────────────────
@@ -426,9 +426,9 @@ def is_health_related(text: str) -> bool:
 
 
 # ─────────────────────────────────────────
-#  CLAUDE AI CALL  (via urllib — no SDK needed)
+#  GROK AI CALL  (via urllib — no SDK needed)
 # ─────────────────────────────────────────
-def call_claude_ai(conversation_history: list, user_message: str, matched_symptoms: list) -> dict:
+def call_grok_ai(conversation_history: list, user_message: str, matched_symptoms: list) -> dict:
     if not USE_AI_FALLBACK:
         return None
 
@@ -468,31 +468,35 @@ Rules:
         messages.append({"role": turn["role"], "content": turn["content"]})
     messages.append({"role": "user", "content": user_message})
 
+    # Build messages in OpenAI format (xAI is OpenAI-compatible)
+    messages_with_system = [{"role": "system", "content": system_prompt}]
+    for turn in conversation_history[-6:]:
+        messages_with_system.append({"role": turn["role"], "content": turn["content"]})
+    messages_with_system.append({"role": "user", "content": user_message})
+
     payload = json.dumps({
-        "model": "claude-sonnet-4-20250514",
+        "model": "grok-3-mini",
         "max_tokens": 900,
-        "system": system_prompt,
-        "messages": messages
+        "messages": messages_with_system
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
+        "https://api.x.ai/v1/chat/completions",
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01"
+            "Authorization": f"Bearer {GROK_API_KEY}"
         },
         method="POST"
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-            text = result["content"][0]["text"].strip()
+            text = result["choices"][0]["message"]["content"].strip()
             text = re.sub(r"^```json\s*|^```\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
             return json.loads(text)
     except Exception as e:
-        print(f"[Claude API error] {e}")
+        print(f"[Grok API error] {e}")
         return None
 
 
@@ -724,7 +728,7 @@ def predict():
     # Step 4 — AI or rule-based response
     ai_result = None
     if USE_AI_FALLBACK:
-        ai_result = call_claude_ai(conversation_history, user_message, matched_symptoms)
+        ai_result = call_grok_ai(conversation_history, user_message, matched_symptoms)
 
     if ai_result:
         explanation   = ai_result.get("simple_explanation", "Here is your health guidance.")
@@ -816,6 +820,6 @@ def status():
 if __name__ == "__main__":
     print("\n=== MediGuide AI Backend ===")
     print(f"ML Model: {'✅ Loaded' if ML_AVAILABLE else '❌ Not found (rule-based only)'}")
-    print(f"Claude AI: {'✅ Enabled' if USE_AI_FALLBACK else '❌ No API key (set ANTHROPIC_API_KEY)'}")
+    print(f"Grok AI:   {'✅ Enabled' if USE_AI_FALLBACK else '❌ No API key (set GROK_API_KEY)'}")
     print("Starting server on http://localhost:5000\n")
     app.run(debug=True, host="0.0.0.0", port=5000)

@@ -5,5 +5,5 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
-      - key: ANTHROPIC_API_KEY
-        sync: false   # you'll paste this in Render dashboard manually
+      - key: GROK_API_KEY
+        sync: false   # paste your xai-... key in Render dashboard

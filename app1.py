@@ -1,17 +1,4 @@
-"""
-MediGuide AI — Merged Backend
-Flask server with ML triage, NLP symptom extraction, remedy engine,
-multi-turn Claude AI chat, auth, and patient history.
-
-Run:
-    pip install flask flask-cors numpy scikit-learn xgboost
-    python app.py
-
-Required files (same folder): model.pkl, encoder.pkl, features.pkl
-Optional: set env var ANTHROPIC_API_KEY=sk-ant-... for AI-powered responses
-"""
-
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import sqlite3
@@ -46,12 +33,12 @@ CORS(app)  # Allow all origins — restrict in production
 #  ANTHROPIC CONFIG
 #  Set env var: ANTHROPIC_API_KEY=sk-ant-...
 # ─────────────────────────────────────────
-GROK_API_KEY = os.environ.get("GROK_API_KEY", "")
-USE_AI_FALLBACK = bool(GROK_API_KEY)
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+USE_AI_FALLBACK = bool(ANTHROPIC_API_KEY)
 if USE_AI_FALLBACK:
-    print("[MediGuide] Grok API key found — AI fallback enabled.")
+    print("[MediGuide] Anthropic API key found — AI fallback enabled.")
 else:
-    print("[MediGuide] No Grok API key — using rule-based responses.")
+    print("[MediGuide] No Anthropic API key — using rule-based responses.")
 
 
 # ─────────────────────────────────────────
@@ -426,9 +413,9 @@ def is_health_related(text: str) -> bool:
 
 
 # ─────────────────────────────────────────
-#  GROK AI CALL  (via urllib — no SDK needed)
+#  CLAUDE AI CALL  (via urllib — no SDK needed)
 # ─────────────────────────────────────────
-def call_grok_ai(conversation_history: list, user_message: str, matched_symptoms: list) -> dict:
+def call_claude_ai(conversation_history: list, user_message: str, matched_symptoms: list) -> dict:
     if not USE_AI_FALLBACK:
         return None
 
@@ -447,7 +434,6 @@ Respond ONLY in this exact JSON (no markdown, no extra text):
 {
   "simple_explanation": "friendly explanation in 1-2 sentences with emojis",
   "risk_level": "LOW" or "MEDIUM" or "HIGH",
-  "risk_score": 45,
   "triage_level": "HOME_CARE" or "CLINIC_VISIT" or "EMERGENCY",
   "triage_reason": "brief reason in one sentence",
   "home_care_tips": ["tip with medicine or remedy", "tip2", "tip3", "tip4", "tip5"],
@@ -455,7 +441,6 @@ Respond ONLY in this exact JSON (no markdown, no extra text):
   "follow_up": "one relevant follow-up question",
   "followup_options": ["option1", "option2", "option3"]
 }
-risk_score must be an integer 0-100 matching the risk_level: LOW=10-35, MEDIUM=40-65, HIGH=70-95.
 
 Rules:
 - Mention specific medicines by name and dose (e.g. Paracetamol 500mg, not just 'take medicine')
@@ -470,35 +455,31 @@ Rules:
         messages.append({"role": turn["role"], "content": turn["content"]})
     messages.append({"role": "user", "content": user_message})
 
-    # Build messages in OpenAI format (xAI is OpenAI-compatible)
-    messages_with_system = [{"role": "system", "content": system_prompt}]
-    for turn in conversation_history[-6:]:
-        messages_with_system.append({"role": turn["role"], "content": turn["content"]})
-    messages_with_system.append({"role": "user", "content": user_message})
-
     payload = json.dumps({
-        "model": "grok-3-mini",
+        "model": "claude-sonnet-4-20250514",
         "max_tokens": 900,
-        "messages": messages_with_system
+        "system": system_prompt,
+        "messages": messages
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://api.x.ai/v1/chat/completions",
+        "https://api.anthropic.com/v1/messages",
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {GROK_API_KEY}"
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01"
         },
         method="POST"
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-            text = result["choices"][0]["message"]["content"].strip()
+            text = result["content"][0]["text"].strip()
             text = re.sub(r"^```json\s*|^```\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
             return json.loads(text)
     except Exception as e:
-        print(f"[Grok API error] {e}")
+        print(f"[Claude API error] {e}")
         return None
 
 
@@ -730,7 +711,7 @@ def predict():
     # Step 4 — AI or rule-based response
     ai_result = None
     if USE_AI_FALLBACK:
-        ai_result = call_grok_ai(conversation_history, user_message, matched_symptoms)
+        ai_result = call_claude_ai(conversation_history, user_message, matched_symptoms)
 
     if ai_result:
         explanation   = ai_result.get("simple_explanation", "Here is your health guidance.")
@@ -739,21 +720,6 @@ def predict():
         follow_up     = ai_result.get("follow_up", "How are you feeling now?")
         followup_opts = ai_result.get("followup_options", ["Better", "Same", "Worse"])
         ai_triage     = ai_result.get("triage_level", "")
-        ai_risk_level = ai_result.get("risk_level", "").upper()
-        ai_risk_score = ai_result.get("risk_score", None)
-
-        # Sync risk_pct and risk_label from Grok's assessment
-        if ai_risk_score is not None:
-            try:
-                risk_pct = max(int(ai_risk_score), risk_pct)
-            except (ValueError, TypeError):
-                pass
-        if ai_risk_level in ("HIGH", "MEDIUM", "LOW"):
-            risk_label = ai_risk_level
-            fallback = {"HIGH": 80, "MEDIUM": 55, "LOW": 20}
-            if risk_pct < fallback[ai_risk_level]:
-                risk_pct = fallback[ai_risk_level]
-
         if ai_triage == "EMERGENCY":
             triage_level  = "EMERGENCY"
             triage_reason = ai_result.get("triage_reason", triage_reason)
@@ -822,10 +788,6 @@ def predict():
 
 @app.route("/", methods=["GET"])
 def home():
-    return send_from_directory(".", "index.html")
-
-@app.route("/status", methods=["GET"])
-def status():
     return jsonify({
         "status": "MediGuide AI backend running",
         "version": "2.0",
@@ -837,6 +799,6 @@ def status():
 if __name__ == "__main__":
     print("\n=== MediGuide AI Backend ===")
     print(f"ML Model: {'✅ Loaded' if ML_AVAILABLE else '❌ Not found (rule-based only)'}")
-    print(f"Grok AI:   {'✅ Enabled' if USE_AI_FALLBACK else '❌ No API key (set GROK_API_KEY)'}")
+    print(f"Claude AI: {'✅ Enabled' if USE_AI_FALLBACK else '❌ No API key (set ANTHROPIC_API_KEY)'}")
     print("Starting server on http://localhost:5000\n")
     app.run(debug=True, host="0.0.0.0", port=5000)

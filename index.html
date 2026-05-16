@@ -371,6 +371,25 @@
 
   .disclaimer-bar { background:var(--surface2); border-top:1px solid var(--border); padding:12px 32px; font-size:12px; color:var(--text2); text-align:center; }
 
+
+  /* ── BLOOD BANK ALERT BANNER ── */
+  #bloodBankBanner {
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:linear-gradient(90deg,#991b1b,#dc2626);
+    color:white; padding:14px 24px; align-items:center;
+    justify-content:space-between; gap:16px; flex-wrap:wrap;
+    animation:alertPulse 1.5s ease-in-out infinite;
+    box-shadow:0 -4px 20px rgba(220,38,38,0.5);
+  }
+  #bloodBankBanner.show { display:flex; }
+  @keyframes alertPulse { 0%,100%{opacity:1} 50%{opacity:.88} }
+  .bb-title { font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .bb-info  { font-size:13px; opacity:.9; }
+  .bb-close { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);
+               color:white; border-radius:8px; padding:6px 14px; cursor:pointer;
+               font-family:'Sora',sans-serif; font-size:13px; white-space:nowrap; }
+  .bb-close:hover { background:rgba(255,255,255,0.35); }
+
   /* PRINT */
   @media print {
     #configBanner,.topbar,.chat-sidebar,.chat-input-area,.disclaimer-bar,
@@ -388,12 +407,26 @@
     <div class="status-dot offline" id="backendDot"></div>
     <span id="backendStatusText">Backend: Not connected</span>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:480px;">
+  <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:500px;flex-wrap:wrap;">
     <span style="opacity:.7;white-space:nowrap;">🔗 Flask URL:</span>
-    <input type="text" id="backendUrl" value="" placeholder="Leave blank — using same-origin backend">
+    <input type="text" id="backendUrl" value="" placeholder="Leave blank — same-origin backend" style="min-width:160px;max-width:220px;">
+    <input type="password" id="grokKeyInput" placeholder="xai-... Grok key (demo only)" style="min-width:160px;max-width:200px;">
     <button onclick="connectBackend()">Connect</button>
   </div>
-  <div style="opacity:.7;font-size:12px;">Run: <code>python app.py</code> then click Connect</div>
+  <div style="opacity:.7;font-size:12px;">Run: <code>python app.py</code> · Set GROK_API_KEY in Render</div>
+</div>
+
+
+<!-- ══════════════ BLOOD BANK ALERT BANNER ══════════════ -->
+<div id="bloodBankBanner">
+  <div>
+    <div class="bb-title">🚨 HIGH RISK DETECTED — Blood Bank Alerted!</div>
+    <div class="bb-info" id="bbAlertInfo">Emergency team has been notified. Please call 108 immediately.</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;">
+    <a href="tel:108" style="background:white;color:#dc2626;font-weight:800;padding:8px 18px;border-radius:8px;text-decoration:none;font-size:14px;">📞 Call 108</a>
+    <button class="bb-close" onclick="document.getElementById('bloodBankBanner').classList.remove('show')">✕ Dismiss</button>
+  </div>
 </div>
 
 <!-- ══════════════ LOGIN SCREEN ══════════════ -->
@@ -1005,6 +1038,8 @@ const REGION_LABELS = {
 async function connectBackend() {
   const url = (document.getElementById('backendUrl').value.trim().replace(/\/$/,'')) || window.location.origin;
   BACKEND_URL = url;
+  const gk = (document.getElementById('grokKeyInput') || {}).value || '';
+  if (gk) window._grokKey = gk;
   try {
     const r = await fetch(url + '/', {method:'GET', signal: AbortSignal.timeout(4000)});
     if(r.ok) {
@@ -1333,6 +1368,29 @@ async function sendMessage() {
 }
 
 // ── DIRECT CLAUDE API CALL (demo/offline mode) ──
+
+// ─────────────────────────────────────────
+//  BLOOD BANK ALERT  (frontend display)
+// ─────────────────────────────────────────
+function showBloodBankAlert(alertInfo) {
+  if (!alertInfo || !alertInfo.alert_triggered) return;
+  const banner = document.getElementById('bloodBankBanner');
+  const info   = document.getElementById('bbAlertInfo');
+  info.textContent = `🏥 Blood bank notified: ${alertInfo.blood_bank_contact} | ${alertInfo.blood_bank_phone} — ${alertInfo.alert_time}`;
+  banner.classList.add('show');
+  // Auto-dismiss after 30s
+  setTimeout(() => banner.classList.remove('show'), 30000);
+}
+
+// Override renderTriageResponse to also fire blood bank alert
+const _origRender = renderTriageResponse;
+function renderTriageResponse(p) {
+  _origRender(p);
+  if (p.blood_bank_alert && p.blood_bank_alert.alert_triggered) {
+    showBloodBankAlert(p.blood_bank_alert);
+  }
+}
+
 async function callClaudeDirect(text) {
   const ageCtx = currentUser && currentUser.age ? `Patient Age: ${currentUser.age} years. ` : '';
   const bmiCtx = currentBMI ? `Patient BMI: ${currentBMI} (${currentBMICategory}), severity adj: +${currentSeverityAdjust}. ` : '';
@@ -1356,11 +1414,11 @@ Rules: Include specific medicines (Paracetamol 500mg) AND Indian home remedies (
 
   // Build messages: prior history (excluding the just-pushed current user msg) + current msg
   const priorHistory = conversationHistory.slice(0, -1);
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "grok-3-mini",
       max_tokens: 1000,
       system: sysPrompt,
       messages: [...priorHistory, {role: "user", content: text}]

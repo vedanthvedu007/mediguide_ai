@@ -27,18 +27,27 @@ except Exception as e:
     model = encoder = FEATURES = None
 
 app = Flask(__name__)
-CORS(app)  # Allow all origins — restrict in production
+CORS(app)
 
 # ─────────────────────────────────────────
-#  ANTHROPIC CONFIG
-#  Set env var: ANTHROPIC_API_KEY=sk-ant-...
+#  GROK (xAI) API CONFIG
+#  Set env var in Render dashboard: GROK_API_KEY=xai-...
 # ─────────────────────────────────────────
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-USE_AI_FALLBACK = bool(ANTHROPIC_API_KEY)
+GROK_API_KEY = os.environ.get("GROK_API_KEY", "")
+USE_AI_FALLBACK = bool(GROK_API_KEY)
 if USE_AI_FALLBACK:
-    print("[MediGuide] Anthropic API key found — AI fallback enabled.")
+    print("[MediGuide] Grok API key found — AI enabled.")
 else:
-    print("[MediGuide] No Anthropic API key — using rule-based responses.")
+    print("[MediGuide] No Grok API key — using rule-based responses.")
+
+# ─────────────────────────────────────────
+#  BLOOD BANK ALERT CONFIG
+#  Optionally set in Render dashboard:
+#    BLOOD_BANK_EMAIL=bloodbank@hospital.com
+#    BLOOD_BANK_PHONE=+91XXXXXXXXXX
+# ─────────────────────────────────────────
+BLOOD_BANK_EMAIL = os.environ.get("BLOOD_BANK_EMAIL", "bloodbank@hospital.com")
+BLOOD_BANK_PHONE = os.environ.get("BLOOD_BANK_PHONE", "+91-XXXXXXXXXX")
 
 
 # ─────────────────────────────────────────
@@ -60,8 +69,6 @@ def init_db():
             age INTEGER
         )
     """)
-
-    # Safe migration for existing DBs
     c.execute("PRAGMA table_info(users)")
     user_cols = [row[1] for row in c.fetchall()]
     if "age" not in user_cols:
@@ -77,11 +84,33 @@ def init_db():
             date TEXT
         )
     """)
-
     c.execute("PRAGMA table_info(patients)")
     pat_cols = [row[1] for row in c.fetchall()]
     if "triage_level" not in pat_cols:
         c.execute("ALTER TABLE patients ADD COLUMN triage_level TEXT")
+
+    # Blood bank alerts log
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS blood_bank_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_email TEXT,
+            patient_name TEXT,
+            symptoms TEXT,
+            risk_score INTEGER,
+            triage_level TEXT,
+            alert_time TEXT,
+            alert_sent INTEGER DEFAULT 0
+        )
+    """)
+
+    # Seed demo user
+    try:
+        c.execute(
+            "INSERT INTO users (name, email, password, age) VALUES (?,?,?,?)",
+            ("Demo User", "demo@mediguide.ai", "health123", 28)
+        )
+    except Exception:
+        pass  # Already exists
 
     conn.commit()
     conn.close()
@@ -90,7 +119,66 @@ init_db()
 
 
 # ─────────────────────────────────────────
-#  SYMPTOM KEYWORD MAP  (NLP extraction)
+#  BLOOD BANK ALERT SYSTEM  🚨
+# ─────────────────────────────────────────
+def trigger_blood_bank_alert(patient_email: str, patient_name: str,
+                              symptoms: str, risk_score: int, triage_level: str) -> dict:
+    """
+    Fires when a patient's risk is HIGH / EMERGENCY.
+    - Logs to blood_bank_alerts table
+    - Prints to server console (replace with real SMS/email below)
+    - Returns alert info sent back to the frontend
+    """
+    alert_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        """INSERT INTO blood_bank_alerts
+           (patient_email, patient_name, symptoms, risk_score, triage_level, alert_time, alert_sent)
+           VALUES (?,?,?,?,?,?,1)""",
+        (patient_email, patient_name, symptoms, risk_score, triage_level, alert_time)
+    )
+    conn.commit()
+    conn.close()
+
+    print(f"\n🚨 [BLOOD BANK ALERT TRIGGERED]")
+    print(f"   Patient  : {patient_name} ({patient_email})")
+    print(f"   Symptoms : {symptoms}")
+    print(f"   Risk     : {risk_score}/100  |  Triage: {triage_level}")
+    print(f"   Notified : {BLOOD_BANK_EMAIL}  |  {BLOOD_BANK_PHONE}")
+    print(f"   Time     : {alert_time}\n")
+
+    # ── Plug in real notifications here ──────────────────────────────────────
+    #
+    # ▸ Twilio SMS:
+    # from twilio.rest import Client
+    # client = Client(os.environ["TWILIO_SID"], os.environ["TWILIO_TOKEN"])
+    # client.messages.create(
+    #     body=f"🚨 HIGH-RISK patient! {patient_name} | Symptoms: {symptoms} | Risk: {risk_score}/100",
+    #     from_=os.environ["TWILIO_FROM"], to=BLOOD_BANK_PHONE
+    # )
+    #
+    # ▸ SendGrid email:
+    # import sendgrid, sendgrid.helpers.mail as mail
+    # sg = sendgrid.SendGridAPIClient(api_key=os.environ["SENDGRID_API_KEY"])
+    # message = mail.Mail(from_email="alerts@mediguide.ai", to_emails=BLOOD_BANK_EMAIL,
+    #     subject=f"🚨 HIGH-RISK Patient Alert — {patient_name}",
+    #     plain_text_content=f"Patient: {patient_name}\nSymptoms: {symptoms}\nRisk: {risk_score}/100")
+    # sg.send(message)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    return {
+        "alert_triggered": True,
+        "alert_time": alert_time,
+        "blood_bank_contact": BLOOD_BANK_EMAIL,
+        "blood_bank_phone": BLOOD_BANK_PHONE,
+        "message": f"🚨 Blood bank alerted at {BLOOD_BANK_EMAIL} — Emergency team notified!"
+    }
+
+
+# ─────────────────────────────────────────
+#  SYMPTOM KEYWORD MAP
 # ─────────────────────────────────────────
 SYMPTOM_KEYWORDS = {
     "itching":                      ["itch", "itching", "itchy"],
@@ -343,11 +431,10 @@ EMERGENCY_TIPS = [
 def pick_remedies(matched: list, risk_label: str) -> list:
     if risk_label == "HIGH":
         return EMERGENCY_TIPS
-
     sym_map = {
         "high_fever": "fever", "mild_fever": "fever",
         "headache": "headache",
-        "cough": "cough", "phlegm": "cough", "mucoid_sputum": "cough",
+        "cough": "cough", "phlegm": "cough",
         "chest_pain": "chest_pain",
         "breathlessness": "breathlessness",
         "vomiting": "vomiting", "nausea": "vomiting",
@@ -359,7 +446,6 @@ def pick_remedies(matched: list, risk_label: str) -> list:
         "back_pain": "back_pain",
         "dizziness": "dizziness",
     }
-
     seen = set()
     tips = []
     for sym in matched:
@@ -367,26 +453,22 @@ def pick_remedies(matched: list, risk_label: str) -> list:
         if category and category not in seen:
             seen.add(category)
             tips.extend(REMEDIES.get(category, []))
-
     if not tips:
         tips = REMEDIES["general"]
-
     return tips[:8]
 
 
 # ─────────────────────────────────────────
-#  NLP — FEATURE EXTRACTION
+#  NLP
 # ─────────────────────────────────────────
 def extract_feature_vector(text: str):
     text_lower = text.lower()
     matched = []
-
     for feature, keywords in SYMPTOM_KEYWORDS.items():
         for kw in keywords:
             if kw in text_lower:
                 matched.append(feature)
                 break
-
     if ML_AVAILABLE and FEATURES:
         vec = np.zeros((1, len(FEATURES)))
         for sym in matched:
@@ -413,78 +495,67 @@ def is_health_related(text: str) -> bool:
 
 
 # ─────────────────────────────────────────
-#  CLAUDE AI CALL  (via urllib — no SDK needed)
+#  GROK AI CALL
 # ─────────────────────────────────────────
-def call_claude_ai(conversation_history: list, user_message: str, matched_symptoms: list) -> dict:
+def call_grok_ai(conversation_history: list, user_message: str, matched_symptoms: list) -> dict:
     if not USE_AI_FALLBACK:
         return None
 
-    system_prompt = """You are MediGuide AI, a compassionate healthcare triage assistant.
-Your role:
-1. Analyse symptoms described in simple language
-2. Give a clear, friendly explanation of possible causes
-3. Recommend practical home remedies with specific medicine names and doses
-4. Suggest Indian home remedies (tulsi, ginger, haldi, ajwain, etc.) where appropriate
-5. Tell patient when to visit clinic vs call emergency 108
-6. Ask a relevant follow-up question to gather more information
+    system_prompt = (
+        "You are MediGuide AI, a compassionate healthcare triage assistant.\n"
+        "Detected symptoms: " + (", ".join(matched_symptoms) if matched_symptoms else "none") + "\n\n"
+        "Respond ONLY in this exact JSON (no markdown, no extra text):\n"
+        '{\n'
+        '  "simple_explanation": "friendly explanation in 1-2 sentences with emojis",\n'
+        '  "risk_level": "LOW" or "MEDIUM" or "HIGH",\n'
+        '  "triage_level": "HOME_CARE" or "CLINIC_VISIT" or "EMERGENCY",\n'
+        '  "triage_reason": "brief reason in one sentence",\n'
+        '  "home_care_tips": ["tip1", "tip2", "tip3", "tip4", "tip5"],\n'
+        '  "warning_signs": ["sign1", "sign2", "sign3"],\n'
+        '  "follow_up": "one relevant follow-up question",\n'
+        '  "followup_options": ["option1", "option2", "option3"]\n'
+        "}\n\n"
+        "Rules:\n"
+        "- Use specific medicine names and doses (e.g. Paracetamol 500mg)\n"
+        "- Include Indian home remedies (tulsi tea, haldi milk, ginger, ajwain)\n"
+        "- EMERGENCY only for chest pain+breathlessness, stroke, unconsciousness, severe bleeding\n"
+        "- Always mention 108 for emergencies\n"
+        "- No text outside the JSON"
+    )
 
-Already detected symptoms: """ + (", ".join(matched_symptoms) if matched_symptoms else "none") + """
-
-Respond ONLY in this exact JSON (no markdown, no extra text):
-{
-  "simple_explanation": "friendly explanation in 1-2 sentences with emojis",
-  "risk_level": "LOW" or "MEDIUM" or "HIGH",
-  "triage_level": "HOME_CARE" or "CLINIC_VISIT" or "EMERGENCY",
-  "triage_reason": "brief reason in one sentence",
-  "home_care_tips": ["tip with medicine or remedy", "tip2", "tip3", "tip4", "tip5"],
-  "warning_signs": ["warning sign 1", "warning sign 2", "warning sign 3"],
-  "follow_up": "one relevant follow-up question",
-  "followup_options": ["option1", "option2", "option3"]
-}
-
-Rules:
-- Mention specific medicines by name and dose (e.g. Paracetamol 500mg, not just 'take medicine')
-- Include Indian home remedies: tulsi tea, haldi milk, ginger, ajwain water etc.
-- EMERGENCY only for: chest pain + breathlessness, stroke signs, unconsciousness, severe bleeding
-- Always mention 108 for emergencies
-- Be warm and simple — many patients are not medically trained
-- Do not add any text outside the JSON"""
-
-    messages = []
+    messages = [{"role": "system", "content": system_prompt}]
     for turn in conversation_history[-6:]:
         messages.append({"role": turn["role"], "content": turn["content"]})
     messages.append({"role": "user", "content": user_message})
 
     payload = json.dumps({
-        "model": "claude-sonnet-4-20250514",
+        "model": "grok-3-mini",
         "max_tokens": 900,
-        "system": system_prompt,
         "messages": messages
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
+        "https://api.x.ai/v1/chat/completions",
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01"
+            "Authorization": f"Bearer {GROK_API_KEY}"
         },
         method="POST"
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-            text = result["content"][0]["text"].strip()
+            text = result["choices"][0]["message"]["content"].strip()
             text = re.sub(r"^```json\s*|^```\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
             return json.loads(text)
     except Exception as e:
-        print(f"[Claude API error] {e}")
+        print(f"[Grok API error] {e}")
         return None
 
 
 # ─────────────────────────────────────────
-#  RULE-BASED RESPONSE  (fallback)
+#  RULE-BASED FALLBACK
 # ─────────────────────────────────────────
 def rule_based_response(matched: list, risk_score: int) -> dict:
     if risk_score >= 70:
@@ -499,7 +570,7 @@ def rule_based_response(matched: list, risk_score: int) -> dict:
         }
     elif risk_score >= 40:
         return {
-            "simple_explanation": "⚠️ You have moderate symptoms. It is best to see a doctor soon for proper diagnosis.",
+            "simple_explanation": "⚠️ You have moderate symptoms. It is best to see a doctor soon.",
             "triage_level": "CLINIC_VISIT",
             "triage_reason": "Moderate symptoms detected — professional evaluation recommended",
             "home_care_tips": pick_remedies(matched, "MEDIUM"),
@@ -557,6 +628,15 @@ def check_recurring(email, symptoms):
     return False
 
 
+def get_patient_name(email: str) -> str:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT name FROM users WHERE email=?", (email,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else email
+
+
 # ─────────────────────────────────────────
 #  AUTH ROUTES
 # ─────────────────────────────────────────
@@ -567,10 +647,7 @@ def login():
     password = data.get("password", "")
     conn = get_db()
     c = conn.cursor()
-    c.execute(
-        "SELECT id, name, email, age FROM users WHERE email=? AND password=?",
-        (email, password)
-    )
+    c.execute("SELECT id, name, email, age FROM users WHERE email=? AND password=?", (email, password))
     user = c.fetchone()
     conn.close()
     if user:
@@ -590,10 +667,7 @@ def register():
     conn = get_db()
     c = conn.cursor()
     try:
-        c.execute(
-            "INSERT INTO users (name, email, password, age) VALUES (?,?,?,?)",
-            (name, email, password, age)
-        )
+        c.execute("INSERT INTO users (name, email, password, age) VALUES (?,?,?,?)", (name, email, password, age))
         conn.commit()
         conn.close()
         return jsonify({"status": "success"})
@@ -612,52 +686,59 @@ def history(email):
     )
     rows = c.fetchall()
     conn.close()
+    return jsonify([{"symptoms": r[0], "risk": r[1], "triage_level": r[2], "date": r[3]} for r in rows])
+
+
+@app.route("/blood-bank-alerts", methods=["GET"])
+def blood_bank_alerts_route():
+    """Returns blood bank alert log. Protect with an API key in production."""
+    email = request.args.get("email", None)
+    conn = get_db()
+    c = conn.cursor()
+    if email:
+        c.execute("SELECT * FROM blood_bank_alerts WHERE patient_email=? ORDER BY id DESC LIMIT 50", (email,))
+    else:
+        c.execute("SELECT * FROM blood_bank_alerts ORDER BY id DESC LIMIT 50")
+    rows = c.fetchall()
+    conn.close()
     return jsonify([
-        {"symptoms": r[0], "risk": r[1], "triage_level": r[2], "date": r[3]}
+        {"id": r[0], "patient_email": r[1], "patient_name": r[2],
+         "symptoms": r[3], "risk_score": r[4], "triage_level": r[5],
+         "alert_time": r[6], "alert_sent": bool(r[7])}
         for r in rows
     ])
 
 
 # ─────────────────────────────────────────
-#  MAIN PREDICT / MULTI-TURN CHAT ROUTE
+#  MAIN PREDICT / CHAT ROUTE
 # ─────────────────────────────────────────
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.json
+    data                 = request.json
     user_message         = data.get("message", "").strip()
     email                = data.get("email", "").strip().lower()
     conversation_history = data.get("history", [])
-    age                  = data.get("age", None)
-    bmi                  = data.get("bmi", None)
-    bmi_category         = data.get("bmi_category", "")
     bmi_severity_adjust  = data.get("bmi_severity_adjust", 0)
+    patient_name         = data.get("name", "") or get_patient_name(email)
 
-    # Non-health filter
     if not is_health_related(user_message):
         return jsonify({
-            "simple_explanation": "I am MediGuide AI — I specialise in health questions 🩺 Please describe your symptoms and I will help you right away!",
-            "symptom_icons": ["❓"],
-            "triage_level": "HOME_CARE",
-            "triage_reason": "Not a health-related question",
-            "risk_score": 0,
-            "risk_level": "LOW",
+            "simple_explanation": "I am MediGuide AI — I specialise in health questions 🩺 Please describe your symptoms!",
+            "symptom_icons": ["❓"], "triage_level": "HOME_CARE",
+            "triage_reason": "Not a health-related question", "risk_score": 0, "risk_level": "LOW",
             "matched_symptoms": [],
             "home_care_tips": ["Please describe what health problem you are experiencing."],
-            "warning_signs": [],
-            "follow_up": "What symptoms are you feeling?",
-            "followup_options": ["I have fever", "I have pain", "I feel weak", "I have cough"]
+            "warning_signs": [], "follow_up": "What symptoms are you feeling?",
+            "followup_options": ["I have fever", "I have pain", "I feel weak", "I have cough"],
+            "blood_bank_alert": None
         })
 
-    # Build full context for NLP
-    prior_user_text = " ".join(
-        t["content"] for t in conversation_history if t.get("role") == "user"
-    )
+    prior_user_text = " ".join(t["content"] for t in conversation_history if t.get("role") == "user")
     full_context = (prior_user_text + " " + user_message).strip()
 
-    # Step 1 — NLP keyword extraction
     feature_vector, matched_symptoms = extract_feature_vector(full_context)
 
-    # Step 2 — ML prediction (if available)
+    # Risk scoring
     risk_label = "LOW"
     risk_pct = 20
 
@@ -675,30 +756,27 @@ def predict():
                 risk_pct = {"HIGH": 85, "MEDIUM": 55, "LOW": 20}.get(risk_label, 30)
         except Exception as e:
             print(f"[ML error] {e}")
-            # Fallback to keyword counting
             risk_pct = min(len(matched_symptoms) * 12, 90)
             risk_label = "HIGH" if risk_pct >= 70 else "MEDIUM" if risk_pct >= 40 else "LOW"
     else:
-        # No ML — keyword-count heuristic
-        HIGH_RISK_KEYWORDS = {"chest_pain", "breathlessness", "coma", "blood_in_sputum",
-                               "stomach_bleeding", "altered_sensorium"}
-        MED_RISK_KEYWORDS  = {"high_fever", "vomiting", "diarrhoea", "fast_heart_rate", "dizziness"}
-        if any(s in HIGH_RISK_KEYWORDS for s in matched_symptoms):
+        HIGH_RISK = {"chest_pain", "breathlessness", "coma", "blood_in_sputum",
+                     "stomach_bleeding", "altered_sensorium"}
+        MED_RISK  = {"high_fever", "vomiting", "diarrhoea", "fast_heart_rate", "dizziness"}
+        if any(s in HIGH_RISK for s in matched_symptoms):
             risk_label, risk_pct = "HIGH", 85
-        elif any(s in MED_RISK_KEYWORDS for s in matched_symptoms):
+        elif any(s in MED_RISK for s in matched_symptoms):
             risk_label, risk_pct = "MEDIUM", 55
         else:
             risk_pct = min(len(matched_symptoms) * 10, 35)
             risk_label = "LOW"
 
-    # Apply BMI severity adjustment
     if bmi_severity_adjust:
         risk_pct = min(risk_pct + int(bmi_severity_adjust), 100)
 
-    # Step 3 — Triage
+    # Triage
     if risk_label == "HIGH" or risk_pct >= 70:
         triage_level  = "EMERGENCY"
-        triage_reason = "High-risk symptoms detected — seek immediate medical attention"
+        triage_reason = "High-risk symptoms — seek immediate medical attention"
         risk_label    = "HIGH"
     elif risk_label == "MEDIUM" or risk_pct >= 40:
         triage_level  = "CLINIC_VISIT"
@@ -706,12 +784,10 @@ def predict():
         risk_label    = "MEDIUM"
     else:
         triage_level  = "HOME_CARE"
-        triage_reason = "Mild symptoms — manageable at home with care"
+        triage_reason = "Mild symptoms — manageable at home"
 
-    # Step 4 — AI or rule-based response
-    ai_result = None
-    if USE_AI_FALLBACK:
-        ai_result = call_claude_ai(conversation_history, user_message, matched_symptoms)
+    # AI response (Grok)
+    ai_result = call_grok_ai(conversation_history, user_message, matched_symptoms)
 
     if ai_result:
         explanation   = ai_result.get("simple_explanation", "Here is your health guidance.")
@@ -724,6 +800,7 @@ def predict():
             triage_level  = "EMERGENCY"
             triage_reason = ai_result.get("triage_reason", triage_reason)
             risk_pct      = max(risk_pct, 80)
+            risk_label    = "HIGH"
         elif ai_triage == "CLINIC_VISIT" and triage_level == "HOME_CARE":
             triage_level  = "CLINIC_VISIT"
             triage_reason = ai_result.get("triage_reason", triage_reason)
@@ -737,7 +814,7 @@ def predict():
         triage_level  = rb["triage_level"]
         triage_reason = rb["triage_reason"]
 
-    # Step 5 — Merge remedy engine tips
+    # Merge engine tips
     engine_tips = pick_remedies(matched_symptoms, risk_label)
     if engine_tips and tips:
         combined = list(tips)
@@ -748,16 +825,25 @@ def predict():
     elif not tips:
         tips = engine_tips
 
-    # Step 6 — Recurring symptom upgrade
     symptom_summary = ", ".join(matched_symptoms) if matched_symptoms else user_message[:120]
     if check_recurring(email, symptom_summary) and triage_level == "HOME_CARE":
         triage_level  = "CLINIC_VISIT"
         triage_reason += " — symptoms recurring for multiple days"
 
-    # Step 7 — Save to DB
     save_patient(email, symptom_summary, risk_pct, triage_level)
 
-    # Step 8 — Icons
+    # ── BLOOD BANK ALERT ──────────────────────────────────────
+    blood_bank_alert_info = None
+    if triage_level == "EMERGENCY" or risk_label == "HIGH":
+        blood_bank_alert_info = trigger_blood_bank_alert(
+            patient_email=email or "unknown",
+            patient_name=patient_name or "Unknown Patient",
+            symptoms=symptom_summary,
+            risk_score=risk_pct,
+            triage_level=triage_level
+        )
+    # ─────────────────────────────────────────────────────────
+
     ICON_MAP = {
         "high_fever": "🌡️", "mild_fever": "🌡️",
         "headache": "🤕", "cough": "😮‍💨", "phlegm": "😮‍💨",
@@ -782,23 +868,26 @@ def predict():
         "home_care_tips": tips,
         "warning_signs": warnings,
         "follow_up": follow_up,
-        "followup_options": followup_opts
+        "followup_options": followup_opts,
+        "blood_bank_alert": blood_bank_alert_info
     })
 
 
 @app.route("/", methods=["GET"])
-def home():
+def home_route():
     return jsonify({
         "status": "MediGuide AI backend running",
-        "version": "2.0",
+        "version": "2.1",
         "ml_available": ML_AVAILABLE,
-        "ai_enabled": USE_AI_FALLBACK
+        "ai_enabled": USE_AI_FALLBACK,
+        "ai_provider": "Grok (xAI)" if USE_AI_FALLBACK else "Rule-based"
     })
 
 
 if __name__ == "__main__":
-    print("\n=== MediGuide AI Backend ===")
-    print(f"ML Model: {'✅ Loaded' if ML_AVAILABLE else '❌ Not found (rule-based only)'}")
-    print(f"Claude AI: {'✅ Enabled' if USE_AI_FALLBACK else '❌ No API key (set ANTHROPIC_API_KEY)'}")
-    print("Starting server on http://localhost:5000\n")
+    print("\n=== MediGuide AI Backend v2.1 ===")
+    print(f"ML Model   : {'✅ Loaded' if ML_AVAILABLE else '❌ Not found (rule-based only)'}")
+    print(f"Grok AI    : {'✅ Enabled' if USE_AI_FALLBACK else '❌ No key — set GROK_API_KEY'}")
+    print(f"Blood Bank : {BLOOD_BANK_EMAIL} | {BLOOD_BANK_PHONE}")
+    print("Server     : http://localhost:5000\n")
     app.run(debug=True, host="0.0.0.0", port=5000)

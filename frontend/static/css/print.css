@@ -1,0 +1,52 @@
+/* ════════════════════════════════════════════════════════════
+   MEDIGUIDE AI v3.0 — Print Styles
+   print.css
+════════════════════════════════════════════════════════════ */
+
+@media print {
+  /* Hide everything except the report */
+  .topbar,
+  .chat-sidebar,
+  .chat-input-area,
+  .disclaimer-bar,
+  .report-controls,
+  #bloodBankBanner,
+  #emergencyOverlay,
+  #settingsModal,
+  #toastContainer,
+  #loginScreen,
+  .tab-panel:not(#reportPanel),
+  .topbar-nav,
+  .topbar-right { display: none !important; }
+
+  #dashScreen     { margin: 0; padding: 0; }
+  #reportPanel    { display: block !important; padding: 0; }
+  .dash-content   { overflow: visible; }
+  .report-preview { box-shadow: none; border: none; }
+
+  body {
+    background: #fff;
+    font-size: 12px;
+    color: #000;
+  }
+
+  .report-header {
+    background: #0d6b5e !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: #fff !important;
+  }
+
+  .report-section-title {
+    background: #f0faf7 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  a { text-decoration: none; color: inherit; }
+
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+}

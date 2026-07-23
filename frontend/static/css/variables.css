@@ -1,0 +1,132 @@
+/* ════════════════════════════════════════════════════════════
+   MEDIGUIDE AI v3.0 — Design System Tokens
+   variables.css
+════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Brand Palette ── */
+  --primary:       #0d6b5e;
+  --primary-light: #1a9478;
+  --primary-dark:  #095048;
+  --primary-pale:  rgba(13, 107, 94, 0.08);
+  --primary-glow:  rgba(13, 107, 94, 0.18);
+
+  --accent:        #ff5a36;
+  --accent-light:  #ff7d60;
+  --accent-dark:   #d94020;
+
+  /* ── Semantic Colors ── */
+  --safe:          #15803d;
+  --safe-light:    #22c55e;
+  --safe-bg:       #dcfce7;
+  --safe-border:   #bbf7d0;
+
+  --warn:          #b45309;
+  --warn-light:    #f59e0b;
+  --warn-bg:       #fef3c7;
+  --warn-border:   #fde68a;
+
+  --danger:        #dc2626;
+  --danger-light:  #ef4444;
+  --danger-bg:     #fee2e2;
+  --danger-border: #fecaca;
+
+  --blood:         #991b1b;
+
+  /* ── Surfaces & Neutrals ── */
+  --bg:            #f0faf7;
+  --bg2:           #e4f3ec;
+  --surface:       #ffffff;
+  --surface2:      #f5fbf8;
+  --border:        #cde8d8;
+  --border-strong: #a8d5be;
+
+  --text:          #0f2922;
+  --text2:         #3a5a4e;
+  --text3:         #72a090;
+  --text-muted:    #9dbfb3;
+
+  /* ── Shadows ── */
+  --shadow-xs:   0 1px 4px rgba(13,107,94,0.06);
+  --shadow-sm:   0 2px 12px rgba(13,107,94,0.08);
+  --shadow:      0 4px 24px rgba(13,107,94,0.13);
+  --shadow-lg:   0 12px 48px rgba(13,107,94,0.18);
+  --shadow-xl:   0 24px 80px rgba(13,107,94,0.22);
+  --shadow-red:  0 4px 20px rgba(220,38,38,0.28);
+  --shadow-redlg:0 12px 40px rgba(220,38,38,0.38);
+
+  /* ── Border Radii ── */
+  --r-xs:   6px;
+  --r-sm:   12px;
+  --r:      18px;
+  --r-lg:   24px;
+  --r-xl:   32px;
+  --r-full: 9999px;
+
+  /* ── Gradients ── */
+  --grad-primary: linear-gradient(135deg, #095048 0%, #0d6b5e 50%, #1a9478 100%);
+  --grad-accent:  linear-gradient(135deg, #d94020 0%, #ff5a36 60%, #ff7d60 100%);
+  --grad-safe:    linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%);
+  --grad-warn:    linear-gradient(135deg, #b45309 0%, #d97706 50%, #f59e0b 100%);
+  --grad-danger:  linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #ef4444 100%);
+  --grad-hero:    linear-gradient(140deg, #095048 0%, #0d6b5e 40%, #1a9478 80%, #22c55e 100%);
+  --grad-card:    linear-gradient(145deg, #ffffff 0%, #f5fbf8 100%);
+
+  /* ── Layout ── */
+  --topbar-h:  68px;
+  --sidebar-w: 276px;
+
+  /* ── Transitions ── */
+  --ease:    cubic-bezier(0.4, 0, 0.2, 1);
+  --t-fast:  0.15s;
+  --t:       0.25s;
+  --t-slow:  0.4s;
+}
+
+/* ════════════════ RESETS ════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, textarea, select { font-family: inherit; }
+img { max-width: 100%; }
+ul { list-style: none; }
+
+/* ════════════════ UTILITIES ════════════════ */
+.hidden        { display: none !important; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.flex          { display: flex; }
+.flex-col      { display: flex; flex-direction: column; }
+.items-center  { align-items: center; }
+.justify-center{ justify-content: center; }
+.justify-between { justify-content: space-between; }
+.flex-wrap     { flex-wrap: wrap; }
+.gap-4  { gap: 4px; }
+.gap-8  { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.gap-20 { gap: 20px; }
+.gap-24 { gap: 24px; }
+.w-full  { width: 100%; }
+.text-center { text-align: center; }
+.font-bold { font-weight: 700; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ════════════════ SCROLLBAR ════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--r-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ════════════════ SCREENS ════════════════ */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; }

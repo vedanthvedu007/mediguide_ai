@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Confidential / Secrets & Environment files
+.env*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+secrets/
+secrets.*
+credentials/
+credentials.json
+client_secret*.json
+
+# ML artifacts / Data dumps (if large or confidential)
+# model.pkl
+# encoder.pkl
+# features.pkl
+
+# Database (SQLite / dump files)
+*.db
+*.sqlite3
+*.sqlite
+*.dump
+
+# IDE / Editor / System
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.bak
+
+# Logs & Temporary files
+*.log
+logs/
+tmp/
+temp/
+
+# Deployment build artifacts
+.render/
+.vercel/

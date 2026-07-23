@@ -2,8 +2,23 @@ services:
   - type: web
     name: mediguide-ai
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    pythonVersion: "3.11.0"
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn --chdir backend app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
-      - key: GROK_API_KEY
-        sync: false   # paste your xai-... key in Render dashboard
+      - key: MONGO_URI
+        sync: false        # Paste your Atlas URI in Render dashboard → Environment
+      - key: GEMINI_API_KEY
+        sync: false        # Paste your Gemini API key in Render dashboard → Environment
+      - key: SECRET_KEY
+        generateValue: true  # Render generates a secure random value automatically
+      - key: BLOOD_BANK_EMAIL
+        value: bloodbank@hospital.com
+      - key: BLOOD_BANK_PHONE
+        value: "+91-XXXXXXXXXX"
+      - key: SMTP_EMAIL
+        sync: false        # Gmail address for sending emergency alerts
+      - key: SMTP_PASSWORD
+        sync: false        # Google App Password (16 chars)
+      - key: FLASK_ENV
+        value: production

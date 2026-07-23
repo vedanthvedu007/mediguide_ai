@@ -1,0 +1,824 @@
+{% extends "base.html" %}
+
+{% block title %}MediGuide AI — Rural Healthcare Triage &amp; Remedy Companion{% endblock %}
+
+{% block content %}
+
+  <!-- ══════════════ AUTHENTICATION SCREEN ══════════════ -->
+  <div id="loginScreen" class="screen active">
+    <!-- Left Hero Column -->
+    <div class="login-hero">
+      <div class="hero-logo">
+        <div class="hero-logo-icon">🩺</div>
+        <span>MediGuide AI</span>
+      </div>
+      <div class="hero-main">
+        <div class="hero-icon-big animate-bounce">🌱</div>
+        <h1 class="hero-headline">Empowering <em>rural communities</em> with smart healthcare access.</h1>
+        <p class="hero-subtext">Instant, AI-powered symptom triage, home remedies, and emergency warnings — even in local dialects.</p>
+        <div class="hero-badges">
+          <div class="hero-badge">🧬 ML Symptom Checker</div>
+          <div class="hero-badge">🌿 Home Remedies</div>
+          <div class="hero-badge">🚨 Emergency Alerts</div>
+        </div>
+      </div>
+      <div class="hero-footer">
+        © 2026 MediGuide AI. BMS Institute AI Hackathon.
+      </div>
+    </div>
+
+    <!-- Right Form Column -->
+    <div class="login-form-col">
+      <div class="form-logo">
+        <div class="form-logo-icon">🩺</div>
+        <div class="form-logo-text">MediGuide AI</div>
+      </div>
+
+      <!-- SIGN IN FORM -->
+      <div id="loginForm" class="animate-fadein">
+        <h2 class="form-title">Welcome back 👋</h2>
+        <p class="form-subtitle">Access your personal healthcare dashboard</p>
+
+        <div class="demo-hint">
+          🔑 Use the demo account to try without setup:<br>
+          Email: <strong>demo@mediguide.ai</strong><br>
+          Password: <strong>health123</strong>
+        </div>
+
+        <div id="loginError" class="auth-error hidden">❌ Invalid email or password. Please try again.</div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Email Address</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="name@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loginPass">Password</label>
+          <input type="password" id="loginPass" class="form-input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-full btn-lg" id="loginBtn" onclick="doLogin()">Sign In &rarr;</button>
+        <p class="auth-switch">New to MediGuide? <a onclick="showRegister()">Create an account</a></p>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div id="registerForm" class="hidden animate-fadein">
+        <h2 class="form-title">Create Account 🌱</h2>
+        <p class="form-subtitle">Register to save your medical checks and reports</p>
+
+        <div id="registerError" class="auth-error hidden">❌ Registration failed. Please check your inputs.</div>
+        <div id="registerSuccess" class="auth-success hidden">✅ Registration successful! Signing you in...</div>
+
+        <div class="form-group">
+          <label class="form-label" for="regName">Full Name</label>
+          <input type="text" id="regName" class="form-input" placeholder="Enter your full name" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regAge">Age</label>
+          <input type="number" id="regAge" class="form-input" placeholder="e.g. 28" min="1" max="120">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" class="form-input" placeholder="name@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regPass">Password</label>
+          <input type="password" id="regPass" class="form-input" placeholder="Minimum 6 characters" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary btn-full btn-lg" id="registerBtn" onclick="doRegister()">Create Account &rarr;</button>
+        <p class="auth-switch">Already registered? <a onclick="showLogin()">Sign in instead</a></p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════ DASHBOARD INTERFACE ══════════════ -->
+  <div id="dashScreen" class="screen">
+
+    <!-- Topbar Navigation -->
+    <header class="topbar">
+      <div class="topbar-logo" onclick="showTab('homePanel')">
+        <div class="topbar-logo-icon">🩺</div>
+        <span class="topbar-logo-text">MediGuide AI</span>
+      </div>
+
+      <nav class="topbar-nav" role="navigation" aria-label="Main navigation">
+        <button class="nav-btn active"  data-panel="homePanel">🏠 Home</button>
+        <button class="nav-btn" data-panel="chatPanel">💬 AI Doctor</button>
+        <button class="nav-btn" data-panel="remediesPanel">🌿 Remedies</button>
+        <button class="nav-btn" data-panel="emergencyPanel">🚨 Emergency</button>
+        <button class="nav-btn" data-panel="bodymapPanel">🫀 Body Map</button>
+        <button class="nav-btn" data-panel="bmiPanel">⚖️ BMI</button>
+        <button class="nav-btn" data-panel="reportPanel">📋 Report</button>
+        <button class="nav-btn" data-panel="tipsPanel">💡 Tips</button>
+        <button class="nav-btn" data-panel="feedbackPanel">⭐ Feedback</button>
+        <button class="nav-btn" data-panel="profilePanel">👤 Profile</button>
+      </nav>
+
+      <div class="topbar-right">
+        <div class="user-chip" onclick="showTab('profilePanel')">
+          <div class="user-avatar" id="topUserAvatar">U</div>
+          <span class="user-chip-name" id="topUserName">Guest</span>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="dash-content">
+
+      <!-- 1. HOME PANEL -->
+      <div id="homePanel" class="tab-panel active">
+        <div class="home-hero-banner">
+          <div class="hero-text-col">
+            <h2 class="hero-title">Namaste, <span id="welcomeName">Friend</span>! 😊</h2>
+            <p class="hero-subtitle">Check symptoms safely with AI, discover natural home remedies, and access urgent care support.</p>
+          </div>
+          <div class="hero-cta-col">
+            <button class="hero-check-btn" onclick="showTab('chatPanel')">
+              🩺 Start Symptom Check &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Health Alert Ticker -->
+        <div class="ticker-wrap" style="margin-bottom: 28px;">
+          <div class="ticker-inner" id="tickerInner"></div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">🏥</div>
+            <div class="stat-value" id="statChecks">0</div>
+            <div class="stat-label">Symptom Checks Done</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🩺</div>
+            <div class="stat-value" id="statBackend">—</div>
+            <div class="stat-label">ML Server Connection</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🛡️</div>
+            <div class="stat-value" id="statStatus">Good</div>
+            <div class="stat-label">Latest Triage Level</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-value" id="statRisk">Low</div>
+            <div class="stat-label">Latest Risk Assessment</div>
+          </div>
+        </div>
+
+        <!-- Common Conditions -->
+        <div class="section-title">🫁 Common Rural Conditions — Tap to Check</div>
+        <div class="conditions-grid">
+          <div class="condition-card" onclick="startSymptomChat('I have fever, shivering, and body pain')">
+            <div class="cond-icon">🤒</div>
+            <div class="cond-name">Fever / Bukhar</div>
+            <span class="cond-badge badge-warn">Check Fever</span>
+          </div>
+          <div class="condition-card" onclick="startSymptomChat('I have a bad cough, sore throat, and runny nose')">
+            <div class="cond-icon">🤧</div>
+            <div class="cond-name">Cold &amp; Cough / Khansi</div>
+            <span class="cond-badge badge-safe">Check Cold</span>
+          </div>
+          <div class="condition-card" onclick="startSymptomChat('I have severe chest pain and breathlessness')">
+            <div class="cond-icon">💔</div>
+            <div class="cond-name">Chest Pain / Emergency</div>
+            <span class="cond-badge badge-danger">Immediate Check</span>
+          </div>
+          <div class="condition-card" onclick="startSymptomChat('I feel dizzy, lightheaded, and weak')">
+            <div class="cond-icon">😵</div>
+            <div class="cond-name">Dizziness / Chakkar</div>
+            <span class="cond-badge badge-safe">Check Balance</span>
+          </div>
+          <div class="condition-card" onclick="startSymptomChat('I have stomach pain, vomiting, and diarrhoea')">
+            <div class="cond-icon">🤢</div>
+            <div class="cond-name">Stomach Ache / Vomit</div>
+            <span class="cond-badge badge-warn">Check Stomach</span>
+          </div>
+          <div class="condition-card" onclick="startSymptomChat('I have an itchy red skin rash')">
+            <div class="cond-icon">🔴</div>
+            <div class="cond-name">Skin Rash / Khujli</div>
+            <span class="cond-badge badge-safe">Check Skin</span>
+          </div>
+          <div class="condition-card" onclick="startSymptomChat('I have pain in my back and muscle stiffness')">
+            <div class="cond-icon">🦴</div>
+            <div class="cond-name">Back Pain / Dard</div>
+            <span class="cond-badge badge-safe">Check Joints</span>
+          </div>
+          <div class="condition-card" onclick="startSymptomChat('I have joint pain and swelling in my knees')">
+            <div class="cond-icon">🦵</div>
+            <div class="cond-name">Swollen Joints</div>
+            <span class="cond-badge badge-warn">Check Joints</span>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="section-title">🕒 Your Health Timeline</div>
+        <div class="activity-card">
+          <div class="activity-header">
+            <span>Recent Symptom Check History</span>
+            <button class="btn btn-ghost btn-sm" onclick="showTab('reportPanel')">View Report</button>
+          </div>
+          <div id="activityList">
+            <div class="activity-item">
+              <div class="activity-dot dot-safe">💚</div>
+              <div class="activity-info">
+                <div class="activity-title">No checks yet</div>
+                <div class="activity-sub">Start a symptom check to see history here</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. AI DOCTOR (CHAT) PANEL -->
+      <div id="chatPanel" class="tab-panel">
+        <div class="chat-layout">
+          <!-- Quick Symptoms Sidebar -->
+          <div class="chat-sidebar">
+            <div class="sidebar-section-title">Quick Symptoms</div>
+            <div class="quick-symptoms">
+              <button class="qs-btn" onclick="quickSend('I have fever, chills, and body pain')">🤒 Fever / Bukhar / ಜ್ವರ</button>
+              <button class="qs-btn" onclick="quickSend('I have dry cough and throat irritation')">🤧 Dry Cough / Khansi / ಕೆಮ್ಮು</button>
+              <button class="qs-btn" onclick="quickSend('I have chest pain radiating to my arm')">💔 Chest Pain / ಎದೆ ನೋವು</button>
+              <button class="qs-btn" onclick="quickSend('I have severe headache and blurred vision')">🤕 Headache / Sir Dard / ತಲೆನೋವು</button>
+              <button class="qs-btn" onclick="quickSend('I have stomach pain and diarrhoea')">🤢 Stomach / Pet Dard / ಹೊಟ್ಟೆನೋವು</button>
+              <button class="qs-btn" onclick="quickSend('I have skin rash and severe itching')">🔴 Rash / Khujli / ತುರಿಕೆ</button>
+              <button class="qs-btn" onclick="quickSend('I have difficulty breathing')">😮‍💨 Breathlessness / ಉಸಿರಾಟ</button>
+              <button class="qs-btn" onclick="quickSend('I feel dizzy and weak')">😵 Dizziness / Chakkar / ತಲೆ ತಿರುಗು</button>
+              <button class="qs-btn" onclick="quickSend('I have back pain and stiffness')">🦴 Back Pain / ಬೆನ್ನು ನೋವು</button>
+              <button class="qs-btn" onclick="quickSend('I have sore throat and pain swallowing')">🤒 Sore Throat / ಗಂಟಲು ನೋವು</button>
+            </div>
+
+            <div class="triage-legend">
+              <div class="sidebar-section-title">Triage Levels</div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background: var(--safe);"></div>
+                <span>Home Care (Rest &amp; Monitor)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background: var(--warn);"></div>
+                <span>Clinic Visit (See a doctor)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background: var(--danger);"></div>
+                <span>Emergency (Call 108!)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Window -->
+          <div class="chat-main">
+            <div class="chat-messages" id="chatMessages" role="log" aria-live="polite"></div>
+            <div class="chat-input-area">
+              <div class="chat-input-row">
+                <textarea id="chatInput" class="chat-textarea" rows="1"
+                  placeholder="Type your symptoms here... (e.g. I have fever and headache since 2 days)"
+                  aria-label="Describe your symptoms"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">➤</button>
+              </div>
+              <div class="input-hint">
+                💡 Type symptoms in English, Hindi or Kannada. Example: <em>"Mujhe bukhar hai" / "Nanage jwara ide" / "I have fever"</em>. Emergency? Call <strong>108</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. HOME REMEDIES PANEL -->
+      <div id="remediesPanel" class="tab-panel">
+        <div class="section-title">🌿 Natural Indian Home Remedies &amp; First-Aid</div>
+        <p style="font-size:14px;color:var(--text2);margin-bottom:24px;">Discover safe, verified herbal and kitchen remedies for common health issues.</p>
+
+        <div class="remedies-filter-bar">
+          <button class="filter-chip active" data-cat="all"         onclick="filterRemedies('all')">🌿 Show All</button>
+          <button class="filter-chip"        data-cat="fever"       onclick="filterRemedies('fever')">🌡️ Fever</button>
+          <button class="filter-chip"        data-cat="pain"        onclick="filterRemedies('pain')">🤕 Pain Relief</button>
+          <button class="filter-chip"        data-cat="respiratory" onclick="filterRemedies('respiratory')">😮‍💨 Respiratory</button>
+          <button class="filter-chip"        data-cat="stomach"     onclick="filterRemedies('stomach')">🤢 Stomach &amp; Gut</button>
+          <button class="filter-chip"        data-cat="skin"        onclick="filterRemedies('skin')">🔴 Skin &amp; Rash</button>
+        </div>
+        <div class="remedies-grid" id="remediesGrid"></div>
+      </div>
+
+      <!-- 4. EMERGENCY & ALERTS PANEL -->
+      <div id="emergencyPanel" class="tab-panel">
+        <div class="emergency-panel-hero">
+          <h2 class="ep-hero-title">🚨 Emergency Medical Support</h2>
+          <p class="ep-hero-sub">Immediate help options. If you or someone nearby is severely injured or has severe chest pain, call emergency services immediately.</p>
+        </div>
+
+        <div class="section-title">📞 Quick Dial Numbers</div>
+        <div class="emergency-contacts-grid">
+          <a class="emergency-contact-card" onclick="callEmergency('108')">
+            <div class="ec-icon">🚑</div>
+            <div class="ec-number">108</div>
+            <div class="ec-label">Free Ambulance</div>
+            <div class="ec-desc">All India Government Emergency</div>
+          </a>
+          <a class="emergency-contact-card" onclick="callEmergency('104')">
+            <div class="ec-icon">🏥</div>
+            <div class="ec-number">104</div>
+            <div class="ec-label">Health Helpline</div>
+            <div class="ec-desc">Medical Advice / Local Support</div>
+          </a>
+          <a class="emergency-contact-card" onclick="callEmergency('1097')">
+            <div class="ec-icon">🩸</div>
+            <div class="ec-number">1097</div>
+            <div class="ec-label">Blood Bank Helpline</div>
+            <div class="ec-desc">Find Blood Stock In Karnataka</div>
+          </a>
+          <a class="emergency-contact-card" onclick="findNearestPHC()">
+            <div class="ec-icon">📍</div>
+            <div class="ec-number">PHC</div>
+            <div class="ec-label">Nearest Clinic</div>
+            <div class="ec-desc">Locate on Google Maps</div>
+          </a>
+        </div>
+
+        <!-- Blood Alert Section -->
+        <div class="blood-alert-section">
+          <div>
+            <h3 class="blood-alert-title">🩸 Need Blood in an Emergency?</h3>
+            <p class="blood-alert-desc">In critical situations, trigger a manual alert. This notifies the rural blood bank coordinator with your patient details.</p>
+          </div>
+          <div>
+            <button class="manual-alert-btn" id="manualAlertBtn" onclick="triggerManualBloodAlert()">
+              🩸 Send Blood Alert
+            </button>
+          </div>
+        </div>
+
+        <!-- First Aid Tips -->
+        <div class="section-title">💡 Essential First-Aid Guides</div>
+        <div class="emergency-tips-grid">
+          <div class="etip-card">
+            <div class="etip-icon">🥵</div>
+            <div>
+              <div class="etip-title">Heat Stroke / Dehydration</div>
+              <div class="etip-desc">Move the person to a cool area. Give ORS or salt-sugar water. Apply cool water to their skin. Do not give aspirin or fever medication.</div>
+            </div>
+          </div>
+          <div class="etip-card">
+            <div class="etip-icon">🐍</div>
+            <div>
+              <div class="etip-title">Snake Bite First Aid</div>
+              <div class="etip-desc">Keep the bitten limb still and below heart level. Wash with soap/water. Do NOT cut, suck poison, or apply ice. Rush to closest PHC for Anti-Snake Venom (ASV).</div>
+            </div>
+          </div>
+          <div class="etip-card">
+            <div class="etip-icon">🔥</div>
+            <div>
+              <div class="etip-title">Burns / Scalds</div>
+              <div class="etip-desc">Run cool (not cold) clean water over the burn for 10–15 minutes. Cover loosely with a clean cloth. Do not apply toothpaste, ghee, or butter.</div>
+            </div>
+          </div>
+          <div class="etip-card">
+            <div class="etip-icon">💔</div>
+            <div>
+              <div class="etip-title">Heart Attack Signs</div>
+              <div class="etip-desc">Crushing chest pain, sweating, shortness of breath, pain in left arm or jaw. Call 108. Keep patient calm, sitting up. Chew a 325mg aspirin if available.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Blood Donation CTA -->
+        <div class="blood-donate-card">
+          <div class="bd-text">
+            <h3>🌱 Save Lives — Register as a Blood Donor</h3>
+            <p>Help rural clinics secure emergency blood supplies. Register on the Karnataka State Blood Services portal.</p>
+          </div>
+          <button class="btn btn-outline-white" onclick="openDonorRegistration()">Register Now &rarr;</button>
+        </div>
+      </div>
+
+      <!-- 5. BODY MAP PANEL -->
+      <div id="bodymapPanel" class="tab-panel">
+        <div class="section-title">🫀 Interactive Symptom Body Map</div>
+        <p style="font-size:14px;color:var(--text2);margin-bottom:28px;">Can't describe your symptoms? Click on the body part that hurts or feels uncomfortable.</p>
+
+        <div class="bodymap-layout">
+          <div class="body-figure-wrap">
+            <div class="body-figure-title">👆 Click a Hotspot</div>
+            <div class="body-svg-wrap">
+              <svg viewBox="0 0 180 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive body map">
+                <ellipse cx="90" cy="38" rx="26" ry="30" class="hotspot" data-region="head"/>
+                <rect x="80" y="66" width="20" height="16" rx="4" fill="#dcfce7" stroke="#a8d5be" stroke-width="1.5"/>
+                <path d="M50 82 Q40 90 38 140 L38 220 Q38 228 46 228 L134 228 Q142 228 142 220 L142 140 Q140 90 130 82 Z" fill="#ffffff" stroke="#cde8d8" stroke-width="1.5"/>
+                <rect x="52" y="90"  width="76" height="65" rx="8" class="hotspot" data-region="chest"/>
+                <rect x="56" y="160" width="68" height="60" rx="8" class="hotspot" data-region="abdomen"/>
+                <path d="M50 88 Q30 100 26 150 Q24 170 30 180 Q36 188 40 180 Q44 170 46 150" class="hotspot" data-region="leftarm"/>
+                <path d="M130 88 Q150 100 154 150 Q156 170 150 180 Q144 188 140 180 Q136 170 134 150" class="hotspot" data-region="rightarm"/>
+                <path d="M50 228 Q46 280 46 320 L68 396 L82 380 Q86 360 84 320" class="hotspot" data-region="legs"/>
+                <path d="M130 228 Q134 280 134 320 L112 396 L98 380 Q94 360 96 320" class="hotspot" data-region="legs"/>
+                <circle cx="155" cy="50" r="14" class="hotspot" data-region="skin"/>
+                <text x="155" y="53" text-anchor="middle" font-size="8" fill="var(--primary)" font-weight="700">🔴 SKIN</text>
+                <text x="90" y="42"  text-anchor="middle" font-size="9" fill="var(--primary-dark)" font-weight="700">HEAD</text>
+                <text x="90" y="125" text-anchor="middle" font-size="9" fill="var(--primary-dark)" font-weight="700">CHEST</text>
+                <text x="90" y="195" text-anchor="middle" font-size="9" fill="var(--primary-dark)" font-weight="700">ABDOMEN</text>
+              </svg>
+            </div>
+            <div class="body-legend">
+              <span><i style="background: var(--primary-pale); border: 1.5px solid var(--border)"></i> Target Zone</span>
+              <span><i style="background: var(--primary-glow); border: 2px solid var(--primary)"></i> Selected</span>
+            </div>
+          </div>
+
+          <div class="bodymap-panel-right" id="regionPanel">
+            <div class="region-placeholder">
+              <div class="ph-icon">🧑‍⚕️</div>
+              <p>Please tap any body region on the left figure to select symptoms.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. BMI CALCULATOR PANEL -->
+      <div id="bmiPanel" class="tab-panel">
+        <div class="section-title">⚖️ BMI Calculator &amp; Health Risk Adjuster</div>
+        <p style="font-size:14px;color:var(--text2);margin-bottom:28px;">Your Body Mass Index (BMI) helps adjust the symptom checker risk metrics.</p>
+
+        <div class="bmi-layout">
+          <div class="card card-body">
+            <div class="bmi-title">📏 Enter Body Metrics</div>
+
+            <div class="slider-group">
+              <div class="slider-label-row">
+                <span class="slider-label">Age</span>
+                <div>
+                  <button class="btn btn-ghost btn-sm" id="ageDec" style="padding:4px 10px;">−</button>
+                  <span class="slider-val-display" id="ageDisplay">25</span>
+                  <button class="btn btn-ghost btn-sm" id="ageInc" style="padding:4px 10px;">+</button>
+                  <span class="slider-unit">years</span>
+                </div>
+              </div>
+              <input type="range" id="ageSlider" min="1" max="100" value="25"
+                oninput="document.getElementById('ageDisplay').textContent=this.value; calcBMI();">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label-row">
+                <span class="slider-label">Height</span>
+                <div>
+                  <span class="slider-val-display" id="heightVal">165</span>
+                  <span class="slider-unit">cm</span>
+                </div>
+              </div>
+              <input type="range" id="heightSlider" min="100" max="220" value="165">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label-row">
+                <span class="slider-label">Weight</span>
+                <div>
+                  <span class="slider-val-display" id="weightVal">65</span>
+                  <span class="slider-unit">kg</span>
+                </div>
+              </div>
+              <input type="range" id="weightSlider" min="20" max="200" value="65">
+            </div>
+
+            <div class="bmi-result-card bmi-normal" id="bmiResultCard">
+              <div class="bmi-number" id="bmiNumber">23.9</div>
+              <div class="bmi-category" id="bmiCategory">Normal Weight</div>
+              <div class="bmi-desc" id="bmiDesc">Healthy BMI range for your body.</div>
+            </div>
+
+            <div class="risk-meter" style="margin-top:20px">
+              <div class="risk-meter-label">
+                <span>Triage Penalty Score</span>
+                <span id="rptSevScore">+0 risk points</span>
+              </div>
+              <div class="risk-bar">
+                <div class="risk-fill low" id="sevThumb" style="width:20%"></div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-full btn-lg" style="margin-top:24px;" onclick="chatWithBMI()">
+              💬 Query AI Doctor with BMI Data &rarr;
+            </button>
+          </div>
+
+          <div class="card card-body">
+            <div class="bmi-title">📊 BMI Health Categories Reference</div>
+            <table class="bmi-table" id="bmiTable">
+              <thead>
+                <tr><th>BMI Range</th><th>Category</th><th>Health Risk Level</th></tr>
+              </thead>
+              <tbody>
+                <tr id="row_underweight"><td>&lt; 18.5</td><td>Underweight</td><td>🟡 Moderate Risk</td></tr>
+                <tr id="row_normal" class="active-row"><td>18.5 – 24.9</td><td>Normal Weight</td><td>🟢 Low Risk</td></tr>
+                <tr id="row_overweight"><td>25.0 – 29.9</td><td>Overweight</td><td>🟡 Moderate Risk</td></tr>
+                <tr id="row_obese"><td>&ge; 30.0</td><td>Obese</td><td>🔴 High Risk</td></tr>
+              </tbody>
+            </table>
+            <div class="divider"></div>
+            <div class="bmi-title" style="font-size:15px;">🎯 Personal Health Insight</div>
+            <p id="bmiPersonalInsight" style="font-size:13px;color:var(--text2);line-height:1.7;">
+              Use the calculators above to adjust your metrics. Normal weight is associated with lower risks of heart disease, diabetes, and joint problems.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. HEALTH REPORT PANEL -->
+      <div id="reportPanel" class="tab-panel">
+        <div class="section-title">📋 Medical Triage Report Card</div>
+
+        <div class="report-controls">
+          <button class="btn btn-primary" onclick="printReport()">🖨️ Print / Download PDF Report</button>
+          <button class="btn btn-ghost"   onclick="refreshReport()">🔄 Refresh Data</button>
+        </div>
+
+        <div class="report-preview" id="reportPrintArea">
+          <div class="report-header">
+            <div class="report-logo">
+              <div class="report-logo-icon">🩺</div>
+              <div>
+                <h2 class="report-logo-title">MediGuide AI Health Sheet</h2>
+                <div class="report-logo-sub">Rural Medical Triage &amp; Clinical Check-sheet</div>
+              </div>
+            </div>
+            <div class="report-meta">
+              <div>Date: <strong id="rptDate">—</strong></div>
+              <div>Report ID: <strong id="rptId">MG-10294X</strong></div>
+            </div>
+          </div>
+
+          <div class="report-disclaimer">
+            ⚠️ <strong>Disclaimer:</strong> This is a computer-generated triage sheet based on self-reported symptoms. It is NOT a professional medical diagnosis. Present this to your doctor.
+          </div>
+
+          <div class="report-section">
+            <div class="report-section-title">Patient Profile</div>
+            <div class="report-patient-grid">
+              <div class="report-field">
+                <span class="report-field-label">Full Name</span>
+                <div class="report-field-val" id="rptName">Demo Patient</div>
+              </div>
+              <div class="report-field">
+                <span class="report-field-label">Patient Email</span>
+                <div class="report-field-val" id="rptEmail">demo@mediguide.ai</div>
+              </div>
+              <div class="report-field">
+                <span class="report-field-label">Age</span>
+                <div class="report-field-val" id="rptAge">28 years</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-section">
+            <div class="report-section-title">Physical Metrics Summary</div>
+            <div class="report-patient-grid">
+              <div class="report-field">
+                <span class="report-field-label">Body Mass Index (BMI)</span>
+                <div class="report-field-val" id="rptBMI">23.9</div>
+              </div>
+              <div class="report-field">
+                <span class="report-field-label">BMI Category</span>
+                <div class="report-field-val" id="rptBMICat">Normal Weight</div>
+              </div>
+              <div class="report-field">
+                <span class="report-field-label">Estimated Heart Rate</span>
+                <div class="report-field-val" id="rptHR">72 bpm (est.)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-section">
+            <div class="report-section-title">Symptom History &amp; Triage Log</div>
+            <table class="report-history-table">
+              <thead>
+                <tr><th>Date</th><th>Symptoms Reported</th><th>Care Level</th><th>Risk Score</th></tr>
+              </thead>
+              <tbody id="reportHistoryBody">
+                <tr>
+                  <td colspan="4" style="text-align:center;padding:18px;color:var(--text3)">No health checks found.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <footer class="report-footer">
+            MediGuide AI Rural Triage Assistant · Verified by Hackathon Panel 2026<br>
+            Emergency Ambulance: <strong>108</strong> · Blood Coordinator: <strong>1097</strong> · Prepared on <span id="rptFooterDate">—</span>
+          </footer>
+        </div>
+      </div>
+
+      <!-- 8. HEALTH TIPS PANEL -->
+      <div id="tipsPanel" class="tab-panel">
+        <div class="section-title">💡 Health Guides &amp; Wellness Tips</div>
+        <p style="font-size:14px;color:var(--text2);margin-bottom:28px;">Small daily habits lead to long-term wellness.</p>
+
+        <div class="tips-filter-tabs" style="margin-bottom:24px;">
+          <button class="filter-chip active" data-tipcat="all"       onclick="filterTips('all')">Show All</button>
+          <button class="filter-chip"        data-tipcat="nutrition" onclick="filterTips('nutrition')">🥗 Nutrition</button>
+          <button class="filter-chip"        data-tipcat="hygiene"   onclick="filterTips('hygiene')">🧼 Hygiene</button>
+          <button class="filter-chip"        data-tipcat="habits"    onclick="filterTips('habits')">🛌 Habits</button>
+        </div>
+
+        <div class="tips-grid">
+          <div class="tip-card" data-cat="nutrition">
+            <div class="tip-img" style="background:#e8f5ef">🥗</div>
+            <div class="tip-body">
+              <div class="tip-cat">Nutrition</div>
+              <h3 class="tip-title">Balanced Plate Diet</h3>
+              <p class="tip-text">Ensure your daily meals contain rice/roti, lentils (dal), vegetables, and milk/curd. Balanced protein prevents fatigue and joint pains.</p>
+            </div>
+          </div>
+          <div class="tip-card" data-cat="nutrition">
+            <div class="tip-img" style="background:#e8f5ef">💧</div>
+            <div class="tip-body">
+              <div class="tip-cat">Hydration</div>
+              <h3 class="tip-title">Daily Hydration Check</h3>
+              <p class="tip-text">Drink 8–10 glasses (2.5L) of water daily. Clean, filtered water prevents stomach infections, kidney stones, and constant headaches.</p>
+            </div>
+          </div>
+          <div class="tip-card" data-cat="hygiene">
+            <div class="tip-img" style="background:#e0f2fe">🧼</div>
+            <div class="tip-body">
+              <div class="tip-cat">Hygiene</div>
+              <h3 class="tip-title">20-Second Handwashing</h3>
+              <p class="tip-text">Wash hands with soap before cooking, eating, and after toilets. This simple action cuts stomach infections and diarrhoea by 50%.</p>
+            </div>
+          </div>
+          <div class="tip-card" data-cat="habits">
+            <div class="tip-img" style="background:#fee2e2">🛌</div>
+            <div class="tip-body">
+              <div class="tip-cat">Habits</div>
+              <h3 class="tip-title">Sleep Recovery</h3>
+              <p class="tip-text">Sleep 7–8 hours nightly. Good sleep helps the immune system fight virus infections and reduces high blood pressure risks.</p>
+            </div>
+          </div>
+          <div class="tip-card" data-cat="hygiene">
+            <div class="tip-img" style="background:#e0f2fe">🦟</div>
+            <div class="tip-body">
+              <div class="tip-cat">Disease Prevention</div>
+              <h3 class="tip-title">Prevent Standing Water</h3>
+              <p class="tip-text">Ensure no water accumulates in coolers or pots. Clear standing water weekly to prevent dengue and malaria mosquitoes.</p>
+            </div>
+          </div>
+          <div class="tip-card" data-cat="habits">
+            <div class="tip-img" style="background:#fdf2f8">🧘</div>
+            <div class="tip-body">
+              <div class="tip-cat">Habits</div>
+              <h3 class="tip-title">Moderate Active Walk</h3>
+              <p class="tip-text">Walk briskly for 30 minutes daily. Walking increases cardiorespiratory efficiency and decreases type-2 diabetes risk factors.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9. FEEDBACK PANEL -->
+      <div id="feedbackPanel" class="tab-panel">
+        <div class="section-title">⭐ Help Us Improve MediGuide AI</div>
+
+        <div class="feedback-wrap">
+          <div class="feedback-card" id="feedbackFormDiv">
+            <div class="rating-stars" id="ratingStars" role="group" aria-label="Rate your experience">
+              <span class="star" onclick="setRating(1)" role="button" aria-label="1 star">☆</span>
+              <span class="star" onclick="setRating(2)" role="button" aria-label="2 stars">☆</span>
+              <span class="star" onclick="setRating(3)" role="button" aria-label="3 stars">☆</span>
+              <span class="star" onclick="setRating(4)" role="button" aria-label="4 stars">☆</span>
+              <span class="star" onclick="setRating(5)" role="button" aria-label="5 stars">☆</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="fbLike">What did you like about the app?</label>
+              <textarea id="fbLike" class="form-input" placeholder="Explain what worked well (e.g. Chatbot, remedies...)"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fbImprove">How can we improve it for rural users?</label>
+              <textarea id="fbImprove" class="form-input" placeholder="Suggestions (e.g. Voice input, dialects...)"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fbRecommend">Would you recommend this to a family member?</label>
+              <select id="fbRecommend" class="form-input">
+                <option value="Yes">Yes, definitely!</option>
+                <option value="Maybe">Maybe</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+
+            <button class="btn btn-primary btn-full btn-lg" id="feedbackBtn" onclick="submitFeedback()">
+              Submit Feedback ✓
+            </button>
+          </div>
+
+          <div class="feedback-success hidden" id="feedbackSuccess">
+            <div class="fb-success-icon">🎉</div>
+            <h3 class="fb-success-title">Feedback Submitted</h3>
+            <p class="fb-success-msg">Thank you for your valuable response. Your feedback helps us make MediGuide AI better for rural villages.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10. USER PROFILE PANEL -->
+      <div id="profilePanel" class="tab-panel">
+        <div class="section-title">👤 User Health Profile</div>
+
+        <div class="profile-layout">
+          <div class="profile-avatar-card">
+            <div class="profile-avatar-big" id="profileAvatar">U</div>
+            <h3 class="profile-name" id="profileName">Demo Patient</h3>
+            <p class="profile-email" id="profileEmail">demo@mediguide.ai</p>
+
+            <div class="divider"></div>
+
+            <div class="health-score-ring">
+              <svg width="120" height="120">
+                <circle cx="60" cy="60" r="50" fill="transparent" stroke="var(--border)" stroke-width="8"></circle>
+                <circle cx="60" cy="60" r="50" fill="transparent" stroke="var(--primary)" stroke-width="8"
+                  stroke-dasharray="314.15" stroke-dashoffset="62.8" stroke-linecap="round"></circle>
+              </svg>
+              <div class="score-center">
+                <span class="score-num">80</span>
+                <div class="score-label">Health Index</div>
+              </div>
+            </div>
+            <p style="font-size:13px;color:var(--text2);margin-top:10px">Overall Health Score: <strong>Good</strong> 💚</p>
+          </div>
+
+          <div class="profile-info-card">
+            <h3 class="section-title" style="font-size:16px">Profile Information</h3>
+            <div class="info-row">
+              <span class="info-key">Full Name</span>
+              <span class="info-val" id="piName">Demo Patient</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Registered Age</span>
+              <span class="info-val" id="piAge">28 years</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Body Mass Index (BMI)</span>
+              <span class="info-val" id="piBMI">23.9 (Normal Weight)</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Total Checks Completed</span>
+              <span class="info-val" id="piChecks">0 checks</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Local Health Center</span>
+              <span class="info-val">Primary Health Centre (PHC), Hubli</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Emergency Support Contact</span>
+              <span class="info-val" style="color:var(--danger);font-weight:800">108 (Helpline)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Emergency Disclaimer -->
+    <footer class="disclaimer-bar" role="contentinfo">
+      ⚠️ <strong>Disclaimer:</strong> MediGuide AI provides automated preliminary triage recommendations based on self-reported inputs. It does NOT replace professional doctors. If extremely unwell, visit your nearest PHC or call <strong>108</strong> immediately.
+    </footer>
+  </div>
+
+
+  <!-- ══════════════ OVERLAYS & MODALS ══════════════ -->
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-box">
+      <h3 class="settings-title" id="settingsTitle">⚙️ MediGuide Configuration</h3>
+      <p class="settings-sub">Enter the custom Flask backend URL to test locally or on a remote server.</p>
+      <div class="form-group">
+        <label class="form-label" for="settingsUrl">Backend Server URL</label>
+        <input type="text" id="settingsUrl" class="form-input" placeholder="http://127.0.0.1:5000">
+      </div>
+      <div class="flex gap-12" style="margin-top:24px;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency Overlay -->
+  <div id="emergencyOverlay" class="hidden" role="alertdialog" aria-modal="true" aria-labelledby="emergencyTitle">
+    <div class="overlay-box">
+      <div class="overlay-icon">🚨</div>
+      <h2 class="overlay-title" id="emergencyTitle">CRITICAL EMERGENCY DETECTED</h2>
+      <p class="overlay-msg">Our triage model indicates potential high-risk symptoms. Please stay calm. Do not attempt to walk or drive alone.</p>
+      <div class="overlay-actions">
+        <a class="btn btn-danger btn-lg" href="tel:108">📞 Call 108 Ambulance Now</a>
+        <button class="btn btn-ghost btn-lg" onclick="dismissEmergencyOverlay()">Dismiss Alert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blood Bank Alert Banner -->
+  <div id="bloodBankBanner" class="hidden" role="alert">
+    <span class="bb-title">🩸 EMERGENCY BLOOD ALERT TRIGGERED</span>
+    <span class="bb-info" id="bbAlertInfo">Connecting to rural bank... Coordinator notified.</span>
+    <div class="bb-actions">
+      <a class="bb-call" href="tel:1097">📞 Call 1097</a>
+      <button class="bb-dismiss" id="dismissBanner">Dismiss</button>
+    </div>
+  </div>
+
+{% endblock %}

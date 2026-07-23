@@ -1,11 +1,12 @@
 services:
   - type: web
     name: mediguide-ai
-    runtime: python
-    pythonVersion: "3.11.0"
+    env: python
     buildCommand: pip install -r backend/requirements.txt
     startCommand: gunicorn --chdir backend app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
       - key: MONGO_URI
         sync: false        # Paste your Atlas URI in Render dashboard → Environment
       - key: GEMINI_API_KEY
@@ -15,7 +16,7 @@ services:
       - key: BLOOD_BANK_EMAIL
         value: bloodbank@hospital.com
       - key: BLOOD_BANK_PHONE
-        value: "+91-XXXXXXXXXX"
+        value: "+91-6364147711"
       - key: SMTP_EMAIL
         sync: false        # Gmail address for sending emergency alerts
       - key: SMTP_PASSWORD

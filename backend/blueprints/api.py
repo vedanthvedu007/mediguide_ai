@@ -226,15 +226,9 @@ def predict():
         else:
             risk_label = "LOW"
 
-    # ── Merge engine remedies into tips ──
-    engine_tips = pick_remedies(matched_symptoms, risk_label)
-    if engine_tips and tips:
-        combined = list(tips)
-        for r in engine_tips:
-            if r not in combined:
-                combined.append(r)
-        tips = combined[:9]
-    elif not tips:
+    # ── Merge engine remedies into tips (only for offline fallback) ──
+    if not ai_result:
+        engine_tips = pick_remedies(matched_symptoms, risk_label)
         tips = engine_tips
 
     # ── Recurring symptom escalation ──

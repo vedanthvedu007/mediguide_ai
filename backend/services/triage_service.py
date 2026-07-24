@@ -270,9 +270,72 @@ EMERGENCY_TIPS = [
     "📞 Stay on the line with 108 operator — follow their instructions"
 ]
 
-def pick_remedies(matched: list, risk_label: str) -> list:
+KANNADA_REMEDIES = {
+    "fever": [
+        "💊 6 ಗಂಟೆಗೊಮ್ಮೆ ಪ್ಯಾರಾಸಿಟಮಾಲ್ 500mg ತೆಗೆದುಕೊಳ್ಳಿ (ದಿನಕ್ಕೆ ಗರಿಷ್ಠ 4 ಡೋಸ್)",
+        "💧 ನಿರ್ಜಲೀಕರಣ ತಡೆಯಲು 8-10 ಲೋಟ ನೀರು ಅಥವಾ ORS ಕುಡಿಯಿರಿ",
+        "🧊 ಜ್ವರ ಕಡಿಮೆ ಮಾಡಲು ಹಣೆಗೆ ತಣ್ಣನೆಯ ಒದ್ದೆ ಬಟ್ಟೆ ಹಾಕಿ",
+        "🛌 ತಂಪಾದ, ಗಾಳಿಯಾಡುವ ಕೋಣೆಯಲ್ಲಿ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ — ಹಗುರವಾದ ಬಟ್ಟೆ ಧರಿಸಿ",
+        "🌿 ತುಳಸಿ + ಶುಂಟಿ ಟೀ ಜೊತೆಗೆ ಜೇನುತುಪ್ಪ — ನೈಸರ್ಗಿಕ ಜ್ವರದ ಮನೆಮದ್ದು",
+        "⚠️ ಜ್ವರ 103°F ಗಿಂತ ಹೆಚ್ಚಿದ್ದರೆ ಅಥವಾ 3 ದಿನಗಳಿಗಿಂತ ಹೆಚ್ಚು ಇದ್ದರೆ ತಕ್ಷಣ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ"
+    ],
+    "headache": [
+        "💊 ನೋವು ಶಮನಕ್ಕೆ ಪ್ಯಾರಾಸಿಟಮಾಲ್ 500mg ತೆಗೆದುಕೊಳ್ಳಿ",
+        "🌑 ಕತ್ತಲಾದ, ಪ್ರಶಾಂತವಾದ ಕೋಣೆಯಲ್ಲಿ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ",
+        "💧 ಚೆನ್ನಾಗಿ ನೀರು ಕುಡಿಯಿರಿ — ನಿರ್ಜಲೀಕರಣ ತಲೆನೋವಿಗೆ ಮುಖ್ಯ ಕಾರಣ",
+        "🌿 ಶುಂಟಿ ಟೀ ಅಥವಾ ತುಳಸಿ ಕಷಾಯ ನೈಸರ್ಗಿಕವಾಗಿ ಶಮನ ನೀಡುತ್ತದೆ",
+        "⚠️ ದಿಢೀರ್ ತೀವ್ರ ತಲೆನೋವು ಬಂದರೆ ತಕ್ಷಣ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ"
+    ],
+    "cough": [
+        "🍯 1 ಚಮಚ ಜೇನುತುಪ್ಪ + ಶುಂಟಿ ರಸ ಬೆಚ್ಚಗಿನ ನೀರಿನಲ್ಲಿ ಕುಡಿಯಿರಿ",
+        "♨️ ಬಿಸಿ ನೀರಿನ ಹಾವಿ (Steam) ದಿನಕ್ಕೆ 2-3 ಬಾರಿ ತೆಗೆದುಕೊಳ್ಳಿ",
+        "🧂 ಬೆಚ್ಚಗಿನ ಉಪ್ಪು ನೀರಿನಿಂದ ಗಂಟಲು ಕೊಕ್ಕರಿಸಿರಿ (Gargle)",
+        "❄️ ತಣ್ಣನೆಯ ಪಾನೀಯಗಳು ಮತ್ತು ಐಸ್‌ಕ್ರೀಮ್ ತಪ್ಪಿಸಿ",
+        "⚠️ ಕೆಮ್ಮಿನಲ್ಲಿ ರಕ್ತ ಬಂದರೆ ತಕ್ಷಣ ಆಸ್ಪತ್ರೆಗೆ ಭೇಟಿ ನೀಡಿ"
+    ],
+    "chest_pain": [
+        "🚨 ಎದೆ ನೋವು ತುರ್ತು ಪರಿಸ್ಥಿತಿಯಾಗಿರಬಹುದು — ತಡ ಮಾಡಬೇಡಿ",
+        "📞 ಎದೆ ನೋವು ತೀವ್ರವಾಗಿದ್ದರೆ ತಕ್ಷಣ 108 ಗೆ ಕರೆ ಮಾಡಿ",
+        "🪑 ನೆಟ್ಟಗೆ ಕುಳಿತುಕೊಳ್ಳಿ — ಮಲಗಬೇಡಿ, ಶಾಂತರಾಗಿರಿ",
+        "🚗 ನೀವೇ ಕಾರು/ಬೈಕ್ ಓಡಿಸಬೇಡಿ — ತಕ್ಷಣ ಸಹಾಯ ಪಡೆಯಿರಿ"
+    ],
+    "breathlessness": [
+        "🚨 ಉಸಿರಾಟದ ತೊಂದರೆ ಇದ್ದರೆ ತಕ್ಷಣ 108 ಆಂಬ್ಯುಲೆನ್ಸ್‌ಗೆ ಕರೆ ಮಾಡಿ",
+        "🪑 ನೆಟ್ಟಗೆ ಕುಳಿತುಕೊಳ್ಳಿ, ತಾಜಾ ಗಾಳಿ ಇರುವ ಕಡೆ ಇರಿ",
+        "💨 ಆಸ್ತಮಾ ಇದ್ದರೆ ನಿಮ್ಮ ಇನ್ಹೇಲರ್ ಬಳಸಿ"
+    ],
+    "vomiting": [
+        "💧 ORS ನೀರನ್ನು ಸಣ್ಣ ಸಣ್ಣ ಪ್ರಮಾಣದಲ್ಲಿ ಕುಡಿಯಿರಿ",
+        "🍚 ಹಗುರವಾದ ಆಹಾರ ಸೇವಿಸಿ: ಗಂಜಿ ನೀರು, ಮಜ್ಜಿಗೆ, ಬಾಳೆಹಣ್ಣು",
+        "🌿 ಶುಂಟಿ ಟೀ ಕಷಾಯ ವಾಂತಿ ಭಾವನೆ ಕಡಿಮೆ ಮಾಡುತ್ತದೆ"
+    ],
+    "diarrhoea": [
+        "💧 ORS (1 ಲೀಟರ್ ನೀರಿನಲ್ಲಿ 1 ಪ್ಯಾಕೆಟ್) ತಕ್ಷಣ ಕುಡಿಯಿರಿ",
+        "🍚 ಮಜ್ಜಿಗೆ ಅನ್ನ, ಗಂಜಿ ನೀರು, ಬಾಳೆಹಣ್ಣು ಸೇವಿಸಿ",
+        "🚫 ಹಾಲು ಮತ್ತು ಮಸಾಲೆ ಪದಾರ್ಥಗಳನ್ನು ತಪ್ಪಿಸಿ"
+    ],
+    "body_pain": [
+        "💊 ನೋವು ಶಮನಕ್ಕೆ ಪ್ಯಾರಾಸಿಟಮಾಲ್ ತೆಗೆದುಕೊಳ್ಳಿ",
+        "🌡️ Apply warm compress or hot water bag on sore muscle areas",
+        "🛌 Rest and avoid heavy physical activity until pain reduces",
+        "🥛 ಅರಿಶಿನ ಹಾಲು ನೈಸರ್ಗಿಕ ಶಮನ ನೀಡುತ್ತದೆ"
+    ],
+    "general": [
+        "🛌 ಚೆನ್ನಾಗಿ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ (7-8 ಗಂಟೆ ನಿದ್ರೆ)",
+        "💧 ದಿನಕ್ಕೆ 8-10 ಲೋಟ ನೀರು ಕುಡಿಯಿರಿ",
+        "🥗 ಹಗುರವಾದ, ಪೌಷ್ಟಿಕ ಆಹಾರ ಸೇವಿಸಿ",
+        "⚠️ ರೋಗಲಕ್ಷಣ ಹೆಚ್ಚಾದರೆ ತಕ್ಷಣ ಹತ್ತಿರದ ಪಿಹೆಚ್‌ಸಿ/ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ"
+    ]
+}
+
+def pick_remedies(matched: list, risk_label: str, raw_text: str = "") -> list:
     if risk_label == "HIGH":
         return EMERGENCY_TIPS
+
+    raw_low = raw_text.lower()
+    is_kannada = any(k in raw_low for k in ["jwara", "jvara", "ಜ್ವರ", "kemmu", "ಕೆಮ್ಮು", "novu", "ನೋವು", "hotte", "edhe", "usir", "turike", "aayasa", "dappa", "gantalu"])
+    active_remedies = KANNADA_REMEDIES if is_kannada else REMEDIES
+
     sym_map = {
         "high_fever": "fever", "mild_fever": "fever",
         "headache": "headache",
@@ -294,9 +357,9 @@ def pick_remedies(matched: list, risk_label: str) -> list:
         category = sym_map.get(sym)
         if category and category not in seen:
             seen.add(category)
-            tips.extend(REMEDIES.get(category, []))
+            tips.extend(active_remedies.get(category, []))
     if not tips:
-        tips = REMEDIES["general"]
+        tips = active_remedies["general"]
     return tips[:8]
 
 WARNING_SIGNS = {
@@ -417,7 +480,6 @@ def extract_feature_vector(text: str):
 
 def is_health_related(text: str) -> bool:
     health_keywords = [
-        # English
         "pain", "ache", "fever", "cough", "cold", "headache", "sick", "ill", "hurt",
         "vomit", "nausea", "dizzy", "tired", "fatigue", "rash", "itch", "swell",
         "breath", "chest", "stomach", "back", "joint", "muscle", "throat", "nose",
@@ -426,200 +488,87 @@ def is_health_related(text: str) -> bool:
         "diabetes", "pressure", "bp", "sugar", "heart", "kidney", "liver", "lung",
         "help", "problem", "issue", "feeling", "not well", "unwell", "what", "how",
         "should", "can", "i have", "i am", "my", "bmi", "weight", "height",
-        # Hindi transliteration
         "bukhar", "sir dard", "khansi", "dard", "badan", "pet", "chakkar",
-        # Kannada transliteration
         "jwara", "jvara", "novu", "kemmu", "edhe", "hotte", "tale", "beenu",
         "usirata", "usiraata", "turike", "okarike", "aayasa", "dappa", "gantalu",
-        # Kannada script (Unicode)
         "ನೋವು", "ಜ್ವರ", "ಕೆಮ್ಮು", "ಎದೆ", "ತಲೆ", "ಹೊಟ್ಟೆ", "ತುರಿಕೆ", "ಉಸಿರಾಟ",
     ]
     text_low = text.lower()
     return any(kw in text_low for kw in health_keywords)
 
 def rule_based_response(matched: list, risk_score: int, raw_text: str = "") -> dict:
-    # Build a human-readable symptom phrase for the explanation
+    raw_lower = raw_text.lower().strip()
+    is_kannada = any(k in raw_lower for k in ["jwara", "jvara", "ಜ್ವರ", "kemmu", "ಕೆಮ್ಮು", "novu", "ನೋವು", "hotte", "edhe", "usir", "turike", "aayasa", "dappa", "gantalu"])
+
     sym_names = [s.replace("_", " ").title() for s in matched[:4]] if matched else []
     sym_phrase = ", ".join(sym_names) if sym_names else "your symptoms"
 
-    raw_lower = raw_text.lower().strip()
     is_explicit_emergency = "emergency blood" in raw_lower or "manual blood alert" in raw_lower or "blood required urgent" in raw_lower
 
-    # Custom keyword QA fallback when symptoms are empty
-    custom_explanation = None
-    custom_triage = None
-    custom_reason = None
-    custom_tips = None
-    custom_warnings = None
-    custom_followup = None
-    custom_options = None
-
-    if not matched and not is_explicit_emergency:
-        if any(w in raw_lower for w in ["hello", "hi", "hey", "namaste"]):
-            custom_explanation = (
-                "Namaste! 🙏 I am MediGuide AI — your rural healthcare companion. "
-                "How are you feeling today? Please describe your symptoms (e.g. fever, headache, stomach ache, chest pain) "
-                "so I can assist you."
-            )
-            custom_triage = "HOME_CARE"
-            custom_reason = "Greeting / Help inquiry"
-            custom_tips = [
-                "Type your symptoms in English, Hindi, or Kannada",
-                "Use the Quick Symptoms sidebar to test common symptoms",
-                "Ensure your profile BMI is filled for adjusted risk calculations"
-            ]
-            custom_warnings = ["In emergency, bypass chat and call 108 immediately"]
-            custom_followup = "What symptom would you like to check?"
-            custom_options = ["I have fever", "I have pain", "I feel dizzy", "I have cough"]
-
-        elif any(w in raw_lower for w in ["sugar", "diabetes"]):
-            custom_explanation = (
-                "🩺 Diabetes management in rural areas is very important. "
-                "Keep hydrated, avoid white sugar and refined flour, eat whole grains (like ragi or jowar), "
-                "and do regular walking. Make sure to consult the PHC doctor to monitor your HbA1c levels."
-            )
-            custom_triage = "CLINIC_VISIT"
-            custom_reason = "Diabetes inquiry — regular clinic monitoring recommended"
-            custom_tips = [
-                "Avoid sweets, refined white sugar, and fruit juices",
-                "Eat fiber-rich food: whole wheat chapati, green leafy vegetables, millets",
-                "Check feet daily for minor cuts or numbness",
-                "Walk at least 30 minutes daily after meals"
-            ]
-            custom_warnings = [
-                "Sudden confusion, sweating, or trembling (hypoglycemia)",
-                "Extreme thirst, frequent urination, or blurred vision",
-                "Non-healing wounds or foot ulcers"
-            ]
-            custom_followup = "Are you experiencing any diabetic complications?"
-            custom_options = ["Numbness in feet", "Faintness or sweat", "No complications"]
-
-        elif any(w in raw_lower for w in ["bp", "blood pressure", "hypertension"]):
-            custom_explanation = (
-                "🩺 High Blood Pressure (hypertension) increases risk of heart attack or stroke. "
-                "Reduce salt in food, avoid stress through breathing exercises, "
-                "and get regular BP readings at the nearest clinic."
-            )
-            custom_triage = "CLINIC_VISIT"
-            custom_reason = "Hypertension inquiry — regular clinic check recommended"
-            custom_tips = [
-                "Limit daily salt intake to less than 1 teaspoon",
-                "Avoid deep fried foods and excessive pickle/papad",
-                "Practice slow deep breathing (Pranayama) 10 min daily",
-                "Ensure you take your daily BP medication on time"
-            ]
-            custom_warnings = [
-                "Sudden severe headache or blurred vision",
-                "Chest pain or chest pressure",
-                "Sudden numbness or slurred speech"
-            ]
-            custom_followup = "Do you have any other cardiovascular symptoms?"
-            custom_options = ["Yes, chest pain", "Yes, headache", "No other symptoms"]
-
-        elif any(w in raw_lower for w in ["diet", "nutrition", "food"]):
-            custom_explanation = (
-                "🥗 Good nutrition is the foundation of wellness. "
-                "Incorporate green vegetables, lentils (dal), ragi mudde, seasonal fruits, "
-                "and clean drinking water into your daily diet. Limit oily foods."
-            )
-            custom_triage = "HOME_CARE"
-            custom_reason = "Nutrition advice"
-            custom_tips = [
-                "Include green leafy vegetables like spinach or methi daily",
-                "Choose millets like ragi and jowar over white rice",
-                "Drink 2-3 liters of clean, filtered water every day",
-                "Add curd or buttermilk to aid stomach digestion"
-            ]
-            custom_warnings = ["Sudden severe weight loss without trying", "Severe loss of appetite lasting days"]
-            custom_followup = "Would you like advice on a specific diet?"
-            custom_options = ["Stomach friendly diet", "Diabetic friendly diet", "General health tips"]
-
-        elif any(w in raw_lower for w in ["cough", "cold", "khansi"]):
-            custom_explanation = (
-                "🤧 For a mild cough or cold, drink warm water throughout the day, "
-                "inhale steam 1-2 times, and drink ginger-tulsi tea. "
-                "Rest well and let your body fight the virus."
-            )
-            custom_triage = "HOME_CARE"
-            custom_reason = "Mild respiratory symptoms"
-            custom_tips = [
-                "Drink warm water or warm herbal tulsi-ginger-honey tea",
-                "Inhale steam from hot water twice daily",
-                "Gargle with warm salt water to relieve throat irritation",
-                "Keep warm and avoid cold drinks and exposure to draft"
-            ]
-            custom_warnings = [
-                "Difficulty breathing or chest pain",
-                "Coughing up blood or green/yellow thick phlegm",
-                "Fever lasting more than 3-4 days"
-            ]
-            custom_followup = "Are you coughing up phlegm or blood?"
-            custom_options = ["Dry cough", "Cough with phlegm", "Cough with blood"]
-
-    if custom_explanation:
-        return {
-            "simple_explanation": custom_explanation,
-            "triage_level": custom_triage,
-            "triage_reason": custom_reason,
-            "home_care_tips": custom_tips,
-            "warning_signs": custom_warnings,
-            "follow_up": custom_followup,
-            "followup_options": custom_options
-        }
-
     if risk_score >= 70:
-        explanation = (
-            f"🚨 Your reported symptoms ({sym_phrase}) indicate a potentially serious condition. "
-            "Please seek emergency medical attention immediately. Do not wait or ignore these signs — "
-            "call 108 for a free ambulance right away!"
-        )
+        if is_kannada:
+            explanation = (
+                f"🚨 ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳು ({sym_phrase}) ತೀವ್ರವಾಗಿರುವಂತೆ ಕಾಣಿಸುತ್ತಿವೆ. "
+                "ದಯವಿಟ್ಟು ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಚಿಕಿತ್ಸೆ ಪಡೆಯಿರಿ. ತಡಮಾಡಬೇಡಿ — "
+                "ಉಚಿತ ಆಂಬ್ಯುಲೆನ್ಸ್‌ಗಾಗಿ ತಕ್ಷಣ 108 ಗೆ ಕರೆ ಮಾಡಿ!"
+            )
+        else:
+            explanation = (
+                f"🚨 Your reported symptoms ({sym_phrase}) indicate a potentially serious condition. "
+                "Please seek emergency medical attention immediately. Do not wait — "
+                "call 108 for a free ambulance right away!"
+            )
         return {
             "simple_explanation": explanation,
             "triage_level": "EMERGENCY",
             "triage_reason": "High-risk symptoms detected — immediate medical attention needed",
             "home_care_tips": EMERGENCY_TIPS,
             "warning_signs": pick_warnings(matched, "HIGH"),
-            "follow_up": "Are you having chest pain or breathing difficulty RIGHT NOW?",
-            "followup_options": ["Yes, chest pain", "Yes, can't breathe", "I feel faint", "Symptoms are severe"]
+            "follow_up": "ನಿಮಗೆ ಎದೆ ನೋವು ಅಥವಾ ಉಸಿರಾಟದ ತೊಂದರೆ ಇದೆಯೇ?",
+            "followup_options": ["ಹೌದು, ಎದೆ ನೋವು", "ಉಸಿರಾಟದ ತೊಂದರೆ", "ತಲೆ ಸುತ್ತು", "ಇಲ್ಲ"]
         }
 
     elif risk_score >= 40:
-        explanation = (
-            f"⚠️ You are experiencing {sym_phrase}. These are moderate symptoms that need medical evaluation. "
-            "Please visit a clinic or doctor soon — do not delay if symptoms worsen. "
-            "In the meantime, rest well and follow the care tips below."
-        )
-        return {
-            "simple_explanation": explanation,
-            "triage_level": "CLINIC_VISIT",
-            "triage_reason": "Moderate symptoms detected — professional evaluation recommended within 24 hours",
-            "home_care_tips": pick_remedies(matched, "MEDIUM"),
-            "warning_signs": pick_warnings(matched, "MEDIUM"),
-            "follow_up": "How long have you had these symptoms?",
-            "followup_options": ["Started today", "2–3 days", "More than 3 days", "Coming and going"]
-        }
-
-    else:
-        if matched:
+        if is_kannada:
             explanation = (
-                f"😊 You are experiencing {sym_phrase}. These appear to be mild symptoms that you can "
-                "manage at home with rest and the remedies below. Monitor yourself closely — "
-                "if anything gets worse, visit a clinic promptly."
+                f"⚠️ ನಿಮಗೆ {sym_phrase} ಲಕ್ಷಣಗಳು ಕಾಣಿಸಿಕೊಂಡಿವೆ. ಇವುಗಳಿಗೆ ವೈದ್ಯರ ಸಲಹೆ ಅಗತ್ಯವಿದೆ. "
+                "ದಯವಿಟ್ಟು ಶೀಘ್ರದಲ್ಲೇ ಹತ್ತಿರದ ಕ್ಲಿನಿಕ್ ಅಥವಾ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ."
             )
         else:
             explanation = (
-                "😊 Based on your description, your symptoms appear mild right now. "
-                "Rest well, stay hydrated, and follow the home care tips below. "
-                "Visit a doctor if you feel worse over the next 24 hours."
+                f"⚠️ You are experiencing {sym_phrase}. These are moderate symptoms that need medical evaluation. "
+                "Please visit a clinic or doctor soon."
+            )
+        return {
+            "simple_explanation": explanation,
+            "triage_level": "CLINIC_VISIT",
+            "triage_reason": "Moderate symptoms detected — professional evaluation recommended",
+            "home_care_tips": pick_remedies(matched, "MEDIUM", raw_text),
+            "warning_signs": pick_warnings(matched, "MEDIUM"),
+            "follow_up": "ಈ ರೋಗಲಕ್ಷಣಗಳು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇವೆ?",
+            "followup_options": ["ಇಂದಿನಿಂದ", "2-3 ದಿನಗಳು", "3 ದಿನಗಳಿಗಿಂತ ಹೆಚ್ಚು", "ಬಂದು ಹೋಗುತ್ತಿದೆ"]
+        }
+
+    else:
+        if is_kannada:
+            explanation = (
+                f"😊 ನಿಮಗೆ {sym_phrase} ಕಾಣಿಸಿಕೊಂಡಿದೆ. ಇವು ಸಾಧಾರಣ ರೋಗಲಕ್ಷಣಗಳಾಗಿದ್ದು, "
+                "ಮನೆಯಲ್ಲಿಯೇ ವಿಶ್ರಾಂತಿ ಮತ್ತು ಮನೆಮದ್ದುಗಳ ಮೂಲಕ ಶಮನಗೊಳಿಸಬಹುದು."
+            )
+        else:
+            explanation = (
+                f"😊 You are experiencing {sym_phrase}. These appear to be mild symptoms that you can "
+                "manage at home with rest and home remedies."
             )
         return {
             "simple_explanation": explanation,
             "triage_level": "HOME_CARE",
-            "triage_reason": "Mild symptoms — home care and monitoring is sufficient for now",
-            "home_care_tips": pick_remedies(matched, "LOW"),
+            "triage_reason": "Mild symptoms — home care is sufficient",
+            "home_care_tips": pick_remedies(matched, "LOW", raw_text),
             "warning_signs": pick_warnings(matched, "LOW"),
-            "follow_up": "Are you experiencing any other symptoms?",
-            "followup_options": ["Fever", "Headache", "Body pain", "Nausea", "No other symptoms"]
+            "follow_up": "ನಿಮಗೆ ಯಾವುದೇ ಇತರ ತೊಂದರೆ ಇದೆಯೇ?",
+            "followup_options": ["ಜ್ವರ", "ತಲೆನೋವು", "ಅಂಗಾಂಗ ನೋವು", "ಇಲ್ಲ"]
         }
+
 
 

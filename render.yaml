@@ -2,6 +2,7 @@ services:
   - type: web
     name: mediguide-ai
     env: python
+    plan: free             # 100% Free Tier Instance on Render (750 hours/month, 512 MB RAM)
     buildCommand: pip install -r backend/requirements.txt
     startCommand: gunicorn --chdir backend app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:

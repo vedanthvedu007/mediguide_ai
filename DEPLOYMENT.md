@@ -64,19 +64,25 @@ Before starting deployment, ensure you have:
 
 ## 4. Deployment Option 1: Render.com (Recommended)
 
-MediGuide AI includes a preconfigured `render.yaml` Blueprint file.
+MediGuide AI includes a preconfigured `render.yaml` Blueprint set to **Render's 100% Free Tier** (`plan: free`).
 
-### Automatic Blueprint Deployment (Easiest)
+> [!NOTE]
+> **Render Free Tier Details**:
+> - **Cost**: 100% Free ($0/month, no credit card required).
+> - **Specs**: 512 MB RAM, 0.1 CPU, 750 free instance hours per month.
+> - **Sleep behavior**: Free services spin down (go to sleep) after 15 minutes of inactivity. When a user opens the URL, it takes ~30-50 seconds to start back up ("cold start").
+
+### Automatic Blueprint Deployment (Easiest & Free)
 1. Log in to [Render Dashboard](https://dashboard.render.com/).
 2. Click **New +** → **Blueprint**.
 3. Connect your GitHub repository (`vedanthvedu007/mediguide_ai`).
-4. Render will automatically detect `render.yaml`.
+4. Render will automatically detect `render.yaml` and select the **Free Plan**.
 5. Fill in the prompt for environment variables:
    - `MONGO_URI`: Your MongoDB Atlas connection string.
    - `GEMINI_API_KEY`: Your Gemini API key.
    - `SMTP_EMAIL`: Your Gmail address for sending emergency alerts.
    - `SMTP_PASSWORD`: Your 16-character Gmail App Password.
-6. Click **Apply**. Render will build and deploy the web service automatically.
+6. Click **Apply**. Render will build and deploy the web service automatically on the Free Tier.
 
 ### Manual Web Service Creation (Alternative)
 If you prefer configuring the Web Service manually on Render:

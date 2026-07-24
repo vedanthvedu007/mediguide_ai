@@ -28,16 +28,17 @@ def call_gemini_ai(conversation_history: list, user_message: str, matched_sympto
         "Detected symptoms: " + (", ".join(matched_symptoms) if matched_symptoms else "none") + "\n\n"
         "Respond ONLY in this exact JSON (no markdown, no extra text):\n"
         '{\n'
-        '  "simple_explanation": "friendly 1-2 sentence explanation with emojis",\n'
+        '  "simple_explanation": "friendly 1-2 sentence explanation with emojis in the user\'s language",\n'
         '  "risk_level": "LOW" or "MEDIUM" or "HIGH",\n'
         '  "triage_level": "HOME_CARE" or "CLINIC_VISIT" or "EMERGENCY",\n'
-        '  "triage_reason": "brief reason in one sentence",\n'
+        '  "triage_reason": "brief reason in one sentence in the user\'s language",\n'
         '  "home_care_tips": ["tip1", "tip2", "tip3", "tip4", "tip5"],\n'
         '  "warning_signs": ["sign1", "sign2", "sign3"],\n'
-        '  "follow_up": "one relevant follow-up question",\n'
+        '  "follow_up": "one relevant follow-up question in the user\'s language",\n'
         '  "followup_options": ["option1", "option2", "option3"]\n'
         "}\n\n"
         "Rules:\n"
+        "- LANGUAGE MATCHING (CRITICAL): Detect the language of the user's message (Kannada script, Kannada transliteration/Kanglish, Hindi, or English). Write simple_explanation, home_care_tips, warning_signs, and follow_up in THAT SAME LANGUAGE and script!\n"
         "- Use specific medicine names and doses (e.g. Paracetamol 500mg)\n"
         "- Include Indian home remedies (tulsi tea, haldi milk, ginger, ajwain)\n"
         "- EMERGENCY only for chest pain+breathlessness, stroke, unconsciousness, severe bleeding\n"

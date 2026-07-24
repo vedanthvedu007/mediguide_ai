@@ -2,6 +2,7 @@ flask
 flask-cors
 pymongo
 dnspython
+certifi
 werkzeug
 python-dotenv
 numpy

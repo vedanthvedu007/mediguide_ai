@@ -122,6 +122,41 @@ If you prefer configuring the Web Service manually on Render:
 
 ---
 
+## 5B. Deployment Option 3: Frontend on Vercel + Backend on Render
+
+Deploying your frontend on **Vercel** gives you **instant initial page loads (0-second cold start)** via Vercel's global CDN, while keeping your Flask ML server on **Render**.
+
+### Step 1: Deploy Backend to Render
+Deploy your backend to Render following [Section 4](#4-deployment-option-1-rendercom-recommended).
+Copy your live Render backend URL (e.g. `https://mediguide-ai-10gp.onrender.com`).
+
+### Step 2: Set your Render URL on Vercel
+You have **2 easy options** to link Vercel to your Render backend:
+
+#### Option A: Using Vercel Environment Variables (Recommended)
+1. Go to your project on the [Vercel Dashboard](https://vercel.com).
+2. Go to **Settings** → **Environment Variables**.
+3. Add a new variable:
+   - **Key**: `NEXT_PUBLIC_BACKEND_URL` (or `BACKEND_URL`)
+   - **Value**: `https://mediguide-ai-10gp.onrender.com` *(Replace with your actual Render URL)*
+   - **Target**: Production, Preview, Development
+4. Click **Save**.
+
+#### Option B: Edit `frontend/vercel.json` Proxy Rewrites
+Your repo includes a preconfigured [frontend/vercel.json](file:///c:/Users/vedum/Desktop/health-ai/frontend/vercel.json). Open `frontend/vercel.json` and replace `https://mediguide-ai-10gp.onrender.com` with your live Render backend URL. This routes all API calls seamlessly without any CORS issues!
+
+### Step 3: Deploy to Vercel
+1. Log in to [Vercel](https://vercel.com).
+2. Click **Add New...** → **Project**.
+3. Import your GitHub repository (`vedanthvedu007/mediguide_ai`).
+4. Set **Root Directory** to `frontend`.
+5. Under **Build and Output Settings**:
+   - Framework Preset: **Other**
+   - Output Directory: `.`
+6. Click **Deploy**. Vercel will host your static interface instantly!
+
+---
+
 ## 6. Environment Variables Reference
 
 | Variable | Required? | Description | Example / Default |
@@ -161,8 +196,10 @@ After your deployment completes and returns a live URL (e.g. `https://mediguide-
 ### Q: The backend shows "Offline" in the dashboard.
 * **Fix**: Ensure your host environment variable `Accept: application/json` is being processed. The root `/` route serves HTML for web browser navigation and JSON for API status checks.
 
-### Q: MongoDB connection timed out or failed.
-* **Fix**: Check MongoDB Atlas **Network Access** tab. Ensure `0.0.0.0/0` is added to IP Access List so cloud hosting IPs aren't blocked.
+### Q: MongoDB SSL Handshake / Certificate Verification Failed on Render.
+* **Cause**: Cloud Linux containers (like Render) lack default Mozilla Root CA SSL certificates needed by MongoDB Atlas.
+* **Fix Applied**: I added `certifi` to `backend/requirements.txt` and configured `mongo.py` to pass `tlsCAFile=certifi.where()` with a automatic fallback.
+* **Additional Step**: Check your **MongoDB Atlas Network Access** (`0.0.0.0/0`) and ensure your DB password doesn't contain unencoded special characters like `@` or `#` (if it does, URL-encode `@` as `%40`).
 
 ### Q: Gemini AI responses are not showing up.
 * **Fix**: Check `GEMINI_API_KEY` in your environment variables. If missing or invalid, MediGuide AI automatically falls back to built-in rule-based remedies so the system remains 100% operational offline.

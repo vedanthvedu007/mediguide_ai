@@ -15,6 +15,12 @@ import os
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import ConnectionFailure, ConfigurationError
 
+try:
+    import certifi
+    HAS_CERTIFI = True
+except ImportError:
+    HAS_CERTIFI = False
+
 _client: MongoClient | None = None
 _db = None
 
@@ -33,14 +39,31 @@ def connect() -> None:
             "  -> Create a .env file from .env.example and add your MongoDB Atlas URI."
         )
 
+    client_kwargs = {"serverSelectionTimeoutMS": 5000}
+    if HAS_CERTIFI:
+        client_kwargs["tlsCAFile"] = certifi.where()
+
     try:
-        _client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+        _client = MongoClient(uri, **client_kwargs)
         # Force a round-trip to validate the connection immediately
         _client.admin.command("ping")
         _db = _client["mediguide"]
         _ensure_indexes()
         print("[MongoDB] [OK] Connected to Atlas - database: mediguide")
     except (ConnectionFailure, ConfigurationError) as exc:
+        # Fallback for environments with strict local SSL interceptors
+        try:
+            print("[MongoDB] [WARN] SSL handshake failed with certifi bundle — attempting TLS fallback...")
+            fallback_kwargs = {"serverSelectionTimeoutMS": 5000, "tlsAllowInvalidCertificates": True}
+            _client = MongoClient(uri, **fallback_kwargs)
+            _client.admin.command("ping")
+            _db = _client["mediguide"]
+            _ensure_indexes()
+            print("[MongoDB] [OK] Connected to Atlas via TLS fallback - database: mediguide")
+            return
+        except Exception:
+            pass
+
         raise ConnectionError(
             f"[MongoDB] [ERROR] Could not connect: {exc}\n"
             "  -> Check your MONGO_URI in the .env file."

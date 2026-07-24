@@ -5,8 +5,17 @@
 
 const APP_VERSION = '3.0';
 
-// ─── Backend ───────────────────────────────────────────────
-let BACKEND_URL    = window.location.origin;
+// ─── Backend URL Resolution ──────────────────────────────────
+// Priorities:
+// 1. window.BACKEND_URL (injected via window variable)
+// 2. localStorage override ('BACKEND_URL')
+// 3. Fallback for *.vercel.app frontend -> default Render backend URL
+// 4. Unified deployment / Localhost -> window.location.origin
+let BACKEND_URL = window.BACKEND_URL
+  || localStorage.getItem('BACKEND_URL')
+  || (window.location.hostname.includes('vercel.app')
+        ? 'https://mediguide-ai-10gp.onrender.com'
+        : window.location.origin);
 let backendOnline  = false;
 
 // ─── Session State ─────────────────────────────────────────

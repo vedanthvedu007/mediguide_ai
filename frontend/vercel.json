@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/login",
+      "destination": "https://mediguide-ai-10gp.onrender.com/login"
+    },
+    {
+      "source": "/register",
+      "destination": "https://mediguide-ai-10gp.onrender.com/register"
+    },
+    {
+      "source": "/predict",
+      "destination": "https://mediguide-ai-10gp.onrender.com/predict"
+    },
+    {
+      "source": "/history/:path*",
+      "destination": "https://mediguide-ai-10gp.onrender.com/history/:path*"
+    },
+    {
+      "source": "/blood-bank-alerts",
+      "destination": "https://mediguide-ai-10gp.onrender.com/blood-bank-alerts"
+    },
+    {
+      "source": "/feedback",
+      "destination": "https://mediguide-ai-10gp.onrender.com/feedback"
+    },
+    {
+      "source": "/remedies",
+      "destination": "https://mediguide-ai-10gp.onrender.com/remedies"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://mediguide-ai-10gp.onrender.com/api/:path*"
+    }
+  ]
+}
